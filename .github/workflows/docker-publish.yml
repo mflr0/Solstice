@@ -49,12 +49,16 @@ jobs:
             version=$GITHUB_REF_NAME
           fi
           { echo 'list<<EOF'; echo "$tags"; echo EOF; echo "version=$version"; } >> "$GITHUB_OUTPUT"
+      - id: go
+        run: echo "version=$(sed -n 's/^go //p' backend/go.mod)" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
           context: .
           push: true
           tags: ${{ steps.tags.outputs.list }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: VERSION=${{ steps.tags.outputs.version }}
+          build-args: |
+            VERSION=${{ steps.tags.outputs.version }}
+            GO_VERSION=${{ steps.go.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

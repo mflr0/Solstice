@@ -26,7 +26,7 @@ e2e:
 	./scripts/e2e-import.sh
 
 docker:
-	docker build -t solstice:$(VERSION) --build-arg VERSION=$(VERSION) .
+	docker build -t solstice:$(VERSION) --build-arg VERSION=$(VERSION) --build-arg GO_VERSION=$$(sed -n 's/^go //p' backend/go.mod) .
 
 release:
 	./scripts/release.sh $(VERSION)

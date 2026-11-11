@@ -1,10 +1,15 @@
+# check=skip=InvalidDefaultArgInFrom
 # Solstice: the web interface is built first, then embedded into a single
 # static Go binary, shipped on a minimal image that runs as an unprivileged
 # user.
 #
-#   docker build -t solstice --build-arg VERSION=1.0.0 .
+#   docker build -t solstice --build-arg VERSION=1.0.0 \
+#     --build-arg GO_VERSION="$(sed -n 's/^go //p' backend/go.mod)" .
 #
 # See deploy/docker/ for a ready-to-run setup with MariaDB.
+
+# The go directive of backend/go.mod; no default, so the image never drifts from it.
+ARG GO_VERSION
 
 FROM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS ui
 WORKDIR /src/frontend
@@ -18,7 +23,7 @@ COPY backend/internal/themes/builtin/ ../backend/internal/themes/builtin/
 # Type-checks, then writes ../backend/internal/web/dist.
 RUN pnpm build
 
-FROM golang:1.27-alpine@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb AS server
+FROM golang:${GO_VERSION}-alpine AS server
 WORKDIR /src/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
