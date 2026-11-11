@@ -9,6 +9,7 @@
   } from '../../core/admin-forms.js';
   import { tokenState, type TokenState } from '../../core/admin-integrations.js';
   import type { AccessToken, TokenScope } from '../../core/admin-types.js';
+  import { accountPath } from '../../core/areas.js';
   import { isoDay } from '../../core/dates.js';
   import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { formatDateTime, relative, relativeAhead, t } from '../../i18n/t.js';
@@ -89,6 +90,8 @@
       creating = false;
     }
   }
+
+  const appsPath = accountPath('apps');
 </script>
 
 <header class="page-head">
@@ -97,7 +100,10 @@
     <h1 class="page-title" id="tokens-title" tabindex="-1">{t.account.sections.tokens}</h1>
   </div>
 </header>
-<p class="lead-text">{t.tokensPage.intro} <code class="mono">Authorization: Bearer …</code></p>
+<p class="lead-text">
+  {t.tokensPage.intro} <code class="mono">Authorization: Bearer …</code>
+  {t.tokensPage.agents}<a href={appsPath}>{t.account.sections.apps}</a>{t.tokensPage.agentsEnd}
+</p>
 
 {#if created?.token}
   <section class="result secret" role="status" aria-labelledby="token-created">

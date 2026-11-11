@@ -2194,11 +2194,25 @@ export const de: Messages = {
     revokeTitle: (name: string) => `${name} widerrufen?`,
     revokeBody: 'Die Anwendung verliert sofort den Zugriff und muss Sie erneut fragen.',
     revoked: 'Anwendung widerrufen.',
+    connect: {
+      title: 'KI-Agenten verbinden',
+      address: 'MCP-Clients wie KI-Agenten verbinden sich mit dieser Adresse:',
+      addressLabel: 'MCP-Adresse',
+      oauth:
+        'Ein Client, der die MCP-Autorisierung (OAuth) unterstützt, braucht nichts weiter: Er öffnet Ihren Browser, damit Sie sich anmelden und zustimmen, und erscheint danach auf dieser Seite.',
+      tokenBefore: 'Andere Clients brauchen ein ',
+      tokenLink: 'persönliches Zugriffstoken',
+      tokenAfter: ', das sie in diesem Header senden:',
+      tokenEnd: '.',
+      guide: 'MCP-Dokumentation (GitHub)',
+    },
   },
 
   tokensPage: {
     intro:
       'Mit einem Token kann ein Skript, ein CI-Job oder ein IDE-Plugin Solstice in Ihrem Namen nutzen, ohne Ihr Passwort. Es sendet das Token im Authorization-Header.',
+    agents: 'Wie Sie einen KI-Agenten verbinden, steht unter ',
+    agentsEnd: '.',
     restricted:
       'Ein Administrator hat eingeschränkt, wer Zugriffstoken erstellen darf, und Ihr Konto gehört nicht dazu. Ihre vorhandenen Token können Sie weiterhin widerrufen.',
     newTitle: 'Neues Token',

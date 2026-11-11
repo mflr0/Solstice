@@ -1,12 +1,16 @@
 <script lang="ts">
   import type { OAuthGrant } from '../../core/admin-types.js';
+  import { accountPath } from '../../core/areas.js';
   import { focusOrderAfterRemoval } from '../../core/focus.js';
+  import { locale } from '../../i18n/index.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
   import { accountApi } from '../../lib/admin-api.js';
   import { errorMessage } from '../../lib/api.js';
+  import { mcpGuideURL } from '../../lib/links.js';
   import { notify } from '../../lib/ui.svelte.js';
   import ConfirmDialog from '../ConfirmDialog.svelte';
+  import CopyField from '../CopyField.svelte';
   import EmptyState from '../EmptyState.svelte';
 
   /**
@@ -16,6 +20,7 @@
   let grants = $state<OAuthGrant[] | null>(null);
   let loadError = $state('');
   let revoking = $state<OAuthGrant | null>(null);
+  let mcpAddress = $state('');
 
   const revokeId = (g: OAuthGrant) => `app-revoke-${g.id}`;
 
@@ -30,6 +35,7 @@
 
   $effect(() => {
     void load();
+    void accountApi.mcpAddress().then((a) => (mcpAddress = a));
   });
 </script>
 
@@ -40,6 +46,28 @@
   </div>
 </header>
 <p class="lead-text">{t.appsPage.intro}</p>
+
+<section class="card connect" aria-labelledby="apps-connect">
+  <h2 class="card-head" id="apps-connect">{t.appsPage.connect.title}</h2>
+  <div class="card-body">
+    <p>{t.appsPage.connect.address}</p>
+    {#if mcpAddress}
+      <CopyField value={mcpAddress} label={t.appsPage.connect.addressLabel} />
+    {/if}
+    <p>{t.appsPage.connect.oauth}</p>
+    <p>
+      {t.appsPage.connect.tokenBefore}<a href={accountPath('tokens')}
+        >{t.appsPage.connect.tokenLink}</a
+      >{t.appsPage.connect.tokenAfter}
+      <code class="mono">Authorization: Bearer &lt;token&gt;</code>{t.appsPage.connect.tokenEnd}
+    </p>
+    <p>
+      <a href={mcpGuideURL(locale)} target="_blank" rel="noopener noreferrer"
+        >{t.appsPage.connect.guide}</a
+      >
+    </p>
+  </div>
+</section>
 
 {#if loadError}
   <p class="error-text" role="alert">{loadError}</p>
@@ -109,6 +137,15 @@
 </ConfirmDialog>
 
 <style>
+  .connect {
+    max-width: 45rem;
+    margin-bottom: 22px;
+  }
+
+  .connect code {
+    overflow-wrap: anywhere;
+  }
+
   .host {
     display: block;
     overflow-wrap: anywhere;

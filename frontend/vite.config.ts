@@ -16,6 +16,8 @@ export default defineConfig({
       '/api': { target: backend },
       '/rest': { target: backend },
       '/healthz': { target: backend },
+      '/.well-known': { target: backend },
+      '/mcp': { target: backend },
     },
   },
   build: {

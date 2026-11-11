@@ -2156,11 +2156,25 @@ export const en = {
     revokeTitle: (name: string) => `Revoke ${name}?`,
     revokeBody: 'The application loses access at once, and must ask you again to come back.',
     revoked: 'Application revoked.',
+    connect: {
+      title: 'Connect an AI agent',
+      address: 'MCP clients, such as AI agents, connect to this address:',
+      addressLabel: 'MCP address',
+      oauth:
+        'A client that supports MCP authorization (OAuth) needs nothing more: it opens your browser for you to sign in and give your consent, then shows up on this page.',
+      tokenBefore: 'Other clients need a ',
+      tokenLink: 'personal access token',
+      tokenAfter: ', which they send in the header',
+      tokenEnd: '.',
+      guide: 'MCP documentation (GitHub)',
+    },
   },
 
   tokensPage: {
     intro:
       'A token lets a script, a CI job or an IDE plugin use Solstice as you, without your password. It sends the token in the Authorization header.',
+    agents: 'To connect an AI agent, see ',
+    agentsEnd: '.',
     restricted:
       'An administrator limited who may create access tokens, and your account is not among them. You can still revoke the tokens you have.',
     newTitle: 'New token',

@@ -14,3 +14,8 @@ export function adminGuideURL(locale: string, section: 'ldap' | 'oidc'): string 
   const lang = locale === 'fr' ? 'fr' : 'en';
   return `${SOURCE_URL}/blob/main/docs/${lang}/administration.md#${GUIDE_ANCHORS[lang][section]}`;
 }
+
+/** The MCP guide, in French or else in English. */
+export function mcpGuideURL(locale: string): string {
+  return `${SOURCE_URL}/blob/feat/v1.0/docs/${locale === 'fr' ? 'fr' : 'en'}/mcp.md`;
+}
