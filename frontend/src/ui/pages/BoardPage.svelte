@@ -3,6 +3,7 @@
   import {
     applyMove,
     boardStep,
+    cardFacets,
     dropIndex,
     groupSections,
     neighbours,
@@ -20,7 +21,7 @@
     CardMove,
     Sprint,
   } from '../../core/board-types.js';
-  import { filtersToJql, type FilterState } from '../../core/filters.js';
+  import { filtersToJql, QUICK_FIELDS, type FilterState } from '../../core/filters.js';
   import { paths } from '../../core/route.js';
   import { shortcutFor } from '../../core/shortcuts.js';
   import type { IssueBrief } from '../../core/types.js';
@@ -38,9 +39,10 @@
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
   import { issueGroup } from '../board/issue-menu.js';
-  import QuickFilters from '../board/QuickFilters.svelte';
+  import BoardQuickFilters from '../board/QuickFilters.svelte';
   import CloneDialog from '../issue/CloneDialog.svelte';
   import FilterBar from '../search/FilterBar.svelte';
+  import QuickFilters from '../search/QuickFilters.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import Illustration from '../Illustration.svelte';
   import TypeMark from '../TypeMark.svelte';
@@ -119,12 +121,31 @@
     }
   }
 
+  /** The cards without the quick filter row's fields, when it has some: they give the row its values. */
+  let rowCards = $state<Card[] | null>(null);
+  let rowSeq = 0;
+
+  async function loadRowCards(id: number, q: string, jql: string | undefined) {
+    const mine = ++rowSeq;
+    try {
+      const res = await api.boardCards(id, { quick: q || undefined, jql });
+      if (mine === rowSeq) rowCards = res.cards;
+    } catch {
+      // The row shows oneself only.
+    }
+  }
+
   function reload() {
     void loadCards(boardId, quickParam, search.jql);
+    if (search.rowJql !== search.jql) void loadRowCards(boardId, quickParam, search.rowJql);
   }
 
   $effect(() => {
     void loadCards(boardId, quickParam, search.jql);
+  });
+
+  $effect(() => {
+    if (search.rowJql !== search.jql) void loadRowCards(boardId, quickParam, search.rowJql);
   });
 
   $effect(() => live.onChange(debounce(reload, 400)));
@@ -132,6 +153,11 @@
   /** A Kanban backlog's column: its issues are on the backlog page, not here. */
   const backlogColumn = $derived(detail?.board.kanbanBacklog ? detail.columns[0] : undefined);
   const columns = $derived(detail ? detail.columns.filter((c) => c.id !== backlogColumn?.id) : []);
+
+  const rowFacets = $derived.by(() => {
+    const source = search.rowJql === search.jql ? cards : rowCards;
+    return source ? cardFacets(source.filter((c) => c.column !== backlogColumn?.id)) : null;
+  });
 
   const sections = $derived(
     detail && cards ? groupSections(cards, detail.board.sectionBy, detail.sections) : [],
@@ -455,10 +481,17 @@
       {/if}
 
       <div class="board-search">
-        <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
+        <FilterBar
+          filters={search.filters}
+          onchange={applyFilters}
+          valueCounts={false}
+          rowFields={QUICK_FIELDS}
+        />
+        <QuickFilters filters={search.filters} onchange={applyFilters} cards={rowFacets}>
+          <BoardQuickFilters filters={d.quickFilters} selected={quick} />
+        </QuickFilters>
       </div>
       {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
-      <QuickFilters filters={d.quickFilters} selected={quick} />
 
       {#if cardsError}
         <p class="error-text" role="alert">{cardsError}</p>

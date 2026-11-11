@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
+  import { presentOptions } from '../../core/board.js';
   import {
     facetJql,
     hasAssignee,
@@ -10,6 +11,8 @@
     type FilterState,
     type ListField,
   } from '../../core/filters.js';
+  import { quote } from '../../core/jql.js';
+  import { matches } from '../../core/text.js';
   import type { Facets } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { api } from '../../lib/api.js';
@@ -18,20 +21,35 @@
   import Avatar from '../Avatar.svelte';
   import FilterPopover from './FilterPopover.svelte';
   import ListPicker from './ListPicker.svelte';
-  import { catalog, chosenNames, facetCounts, labelOf, rememberEpics } from './sources.svelte.js';
+  import {
+    catalog,
+    chosenNames,
+    facetCounts,
+    labelOf,
+    loadOptions,
+    rememberEpics,
+    type Option,
+  } from './sources.svelte.js';
 
   /**
    * One-click filters under the filter bar: the avatars of the busiest
    * assignees, oneself first, then a list each for type, status, priority
-   * and epic. They change the same filters as the bar.
+   * and epic. They change the same filters as the bar. On a board, the
+   * values and their counts come from its cards, and the board's own quick
+   * filters close the row.
    */
   interface Props {
     filters: FilterState;
     onchange: (next: FilterState, burst: string) => void;
     /** A project the search is already limited to (project page). */
     project?: string | undefined;
+    /** A board's counts (cardFacets) in place of the search's; null while its cards load. */
+    cards?: Facets | null | undefined;
+    /** What follows the lists (the board's quick filters). */
+    children?: Snippet | undefined;
   }
-  const { filters, onchange, project }: Props = $props();
+  const { filters, onchange, project, cards, children }: Props = $props();
+  const onBoard = $derived(cards !== undefined);
 
   const LISTS = ['type', 'status', 'priority', 'epic'] as const satisfies readonly ListField[];
 
@@ -44,20 +62,27 @@
   /** Everyone counted so far, by id: a chosen person keeps their avatar once their count is 0. */
   let known = $state<Facets['users']>({});
   let facetSeq = 0;
+  function remember(r: Facets) {
+    for (const u of Object.values(r.users)) {
+      refs.users[u.username.toLowerCase()] = u.name;
+      catalog.people[u.username.toLowerCase()] = u;
+    }
+    rememberEpics(r);
+    known = { ...untrack(() => known), ...r.users };
+    facet = r;
+  }
+
   $effect(() => {
+    if (cards !== undefined) {
+      if (cards) remember(cards);
+      return;
+    }
     const jql = facetJql(filters, 'assignee');
     const mine = ++facetSeq;
     // The epics counted name a chosen epic before its list is opened.
     api.facets({ jql, project, fields: 'assignee,epic' }).then(
       (r) => {
-        if (mine !== facetSeq) return;
-        for (const u of Object.values(r.users)) {
-          refs.users[u.username.toLowerCase()] = u.name;
-          catalog.people[u.username.toLowerCase()] = u;
-        }
-        rememberEpics(r);
-        known = { ...untrack(() => known), ...r.users };
-        facet = r;
+        if (mine === facetSeq) remember(r);
       },
       // Without the counts, the row shows oneself only.
       () => undefined,
@@ -91,6 +116,7 @@
   async function loadCounts(field: ListField) {
     const mine = ++countSeq;
     counts = null;
+    if (onBoard) return;
     try {
       const values = await facetCounts(filters, field, project);
       if (values && mine === countSeq) counts = { field, values };
@@ -116,6 +142,36 @@
 
   const moreFlag = openFlag('assignee');
 
+  /** A list's values on a board: those its cards have, the busiest first for people. */
+  function boardLoad(field: ListField, src: Facets): (q: string) => Promise<Option[]> {
+    const n = src.facets[field] ?? {};
+    return async (q) => {
+      if (field === 'assignee') {
+        return Object.values(src.users)
+          .filter((u) => matches(q, u.name, u.username))
+          .sort((a, b) => (n[b.id] ?? 0) - (n[a.id] ?? 0) || a.name.localeCompare(b.name))
+          .map((u) => ({
+            value: quote(u.username),
+            label: u.name,
+            hint: u.username,
+            facets: [String(u.id)],
+            user: u,
+          }));
+      }
+      if (field === 'epic') {
+        return Object.values(src.epics)
+          .filter((e) => matches(q, e.summary, e.key))
+          .map((e) => ({ value: e.key, label: e.summary, hint: e.key, facets: [e.key] }));
+      }
+      return presentOptions(await loadOptions(field, q, []), n);
+    };
+  }
+
+  function countsOf(field: ListField): Record<string, number> | null {
+    if (cards !== undefined) return cards?.facets[field] ?? null;
+    return counts?.field === field ? counts.values : null;
+  }
+
   const clear = (f: ListField) => onchange(withoutField(filters, f), `clear:${f}:${++opened}`);
 </script>
 
@@ -126,7 +182,8 @@
     {project}
     onchange={(next) => onchange(next, burst)}
     onreset={() => clear(field)}
-    counts={counts?.field === field ? counts.values : null}
+    counts={countsOf(field)}
+    load={cards ? boardLoad(field, cards) : undefined}
   />
 {/snippet}
 
@@ -168,6 +225,7 @@
       {@render list(f)}
     </FilterPopover>
   {/each}
+  {@render children?.()}
 </div>
 
 <style>

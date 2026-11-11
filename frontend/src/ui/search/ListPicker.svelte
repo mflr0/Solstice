@@ -18,6 +18,7 @@
     OPEN,
     sameCategories,
     specialValues,
+    type Option,
   } from './sources.svelte.js';
   import ValuePicker from './ValuePicker.svelte';
 
@@ -34,8 +35,10 @@
     project?: string | undefined;
     /** Issues per value (facetCounts), null while unknown. */
     counts?: Record<string, number> | null | undefined;
+    /** The values offered, in place of the field's own source (a board's). */
+    load?: ((q: string) => Promise<Option[]>) | undefined;
   }
-  const { filters, field, onchange, onreset, project, counts = null }: Props = $props();
+  const { filters, field, onchange, onreset, project, counts = null, load }: Props = $props();
 
   /** Fields whose values may be typed in freely (anything the server will match by name). */
   const FREE: ListField[] = ['labels', 'fixVersion', 'component', 'epic'];
@@ -71,7 +74,7 @@
   label={t.search.fields[field]}
   selected={filters.values[field] ?? []}
   onchange={(v) => onchange(withValues(filters, field, v))}
-  load={(q) => loadOptions(field, q, scope())}
+  load={load ?? ((q) => loadOptions(field, q, scope()))}
   special={specialValues(field)}
   {shortcuts}
   labelOf={(v) => labelOf(field, v)}

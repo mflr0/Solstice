@@ -195,10 +195,12 @@ describe('BoardPage', () => {
     router.setParams({ quick: '2', jql: 'assignee is EMPTY AND text ~ "zèbre"' });
     component = mount(BoardPage, { target: document.body, props: { boardId: 1 } });
     await settle();
-    expect(boardCards).toHaveBeenLastCalledWith(1, {
+    expect(boardCards).toHaveBeenCalledWith(1, {
       quick: '2',
       jql: 'assignee is EMPTY AND text ~ "zèbre"',
     });
+    // The quick filter row's values: the same board without its assignee.
+    expect(boardCards).toHaveBeenCalledWith(1, { quick: '2', jql: 'text ~ "zèbre"' });
     expect(document.querySelector<HTMLInputElement>('.filter-bar input')?.value).toBe('zèbre');
   });
 
