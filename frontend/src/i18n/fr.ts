@@ -960,6 +960,7 @@ export const fr: Messages = {
       create: 'Créer un ticket',
       help: 'Afficher les raccourcis',
       toggleScheme: 'Passer du mode clair au mode sombre',
+      scope: 'Choisir le projet',
       next: 'Résultat suivant',
       previous: 'Résultat précédent',
       left: 'Aller à gauche',

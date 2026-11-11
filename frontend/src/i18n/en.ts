@@ -955,6 +955,7 @@ export const en = {
       create: 'Create an issue',
       help: 'Show the shortcuts',
       toggleScheme: 'Switch between light and dark',
+      scope: 'Choose the project',
       next: 'Next result',
       previous: 'Previous result',
       left: 'Move left',

@@ -963,6 +963,7 @@ export const it: Messages = {
       create: 'Crea un ticket',
       help: 'Mostra le scorciatoie',
       toggleScheme: 'Passa tra chiaro e scuro',
+      scope: 'Scegli il progetto',
       next: 'Risultato successivo',
       previous: 'Risultato precedente',
       left: 'Vai a sinistra',
