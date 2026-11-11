@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 
+import type { GlobalWorkflow } from '../../src/core/admin-types.js';
 import type { StatusRef, Workflow } from '../../src/core/types.js';
 import {
   addStatus,
   byCategory,
+  canDeleteGlobal,
   cell,
+  globalWorkflowsData,
   isDirty,
+  makeDefaultInput,
   matrix,
   moveStatus,
   removeStatus,
@@ -360,5 +364,40 @@ describe('issue types going back to the default workflow', () => {
     const d = toDraft(w);
     expect(toInput(d, false, undefined, { '20': '3' }).remapDefault).toEqual({ '20': '3' });
     expect('remapDefault' in toInput(d, false, undefined, {})).toBe(false);
+  });
+});
+
+describe('global workflows', () => {
+  const globalOf = ({ id, name, default: d, initial, statuses, transitions }: Workflow) =>
+    ({ id, name, default: d, initial, statuses, transitions }) satisfies GlobalWorkflow;
+  const def = globalOf(software);
+  const other = globalOf(bugs);
+
+  it('reach the editor with no issue type, no issue and the catalogue', () => {
+    const data = globalWorkflowsData([def, other], [OPEN, TODO]);
+    expect(data.workflows.map((w) => [w.id, w.issueTypes, w.usage])).toEqual([
+      [1, [], {}],
+      [9, [], {}],
+    ]);
+    expect(data.issueTypes).toEqual([]);
+    expect(data.statuses).toEqual([OPEN, TODO]);
+    expect(data.can.edit).toBe(true);
+  });
+
+  it('cannot delete the default, nor the last one', () => {
+    expect(canDeleteGlobal(def, [def, other])).toBe(false);
+    expect(canDeleteGlobal(other, [def, other])).toBe(true);
+    expect(canDeleteGlobal({ ...other }, [other])).toBe(false);
+  });
+
+  it('makes one the default and keeps the rest of it', () => {
+    const input = makeDefaultInput(other);
+    expect(input.default).toBe(true);
+    expect(input.issueTypes).toBeUndefined();
+    expect(input.name).toBe('Bogues');
+    expect(input.initial).toBe('10000');
+    expect(input.statuses).toEqual(['10000', '3', '10002', '10001']);
+    expect(input.transitions).toHaveLength(5);
+    expect(input.transitions[0]).toEqual({ id: 1, name: 'Démarrer', from: '10000', to: '3' });
   });
 });

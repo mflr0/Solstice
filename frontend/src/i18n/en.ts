@@ -1538,7 +1538,18 @@ export const en = {
     remapConfirm: 'Move and save',
     remapDefault: (name: string) =>
       `Issue types going back to the default workflow “${name}”: their statuses it lacks`,
+    globalIsDefault: 'The default global workflow.',
+    globalMakeDefaultHint: 'The workflow offered first.',
     remapDeleteConfirm: 'Move and delete',
+  },
+
+  adminWorkflows: {
+    intro:
+      'The workflows projects can start from. A project gets its own copy: changing a workflow here never changes a project’s.',
+    makeDefault: 'Make default',
+    madeDefault: (name: string) => `“${name}” is now the default workflow.`,
+    notFound: 'This workflow does not exist, or no longer does.',
+    deleteKeep: 'Projects keep their own workflows: none of them changes.',
   },
 
   adminArea: {
@@ -1562,6 +1573,7 @@ export const en = {
       users: 'Users',
       groups: 'Groups',
       projects: 'Projects',
+      workflows: 'Workflows',
       securityLevels: 'Security levels',
       issueTypes: 'Issue types',
       priorities: 'Priorities',
@@ -1585,6 +1597,7 @@ export const en = {
       users: 'Create accounts, deactivate them, change a password.',
       groups: 'Gather people to give them permissions together.',
       projects: 'Create, rename, archive or delete a project.',
+      workflows: 'The workflows projects can start from.',
       securityLevels: 'Who sees the issues at each security level of a project.',
       issueTypes: 'Story, bug, task… and sub-tasks.',
       priorities: 'The order of urgency and the color of each priority.',
@@ -3276,6 +3289,7 @@ export const en = {
     whereBoards: 'Board columns',
     whereIssues: 'Issues',
     whereIssuesHint: 'Move these issues to another status first.',
+    workflowGlobal: (workflow: string) => `${workflow} (global)`,
     workflowIn: (workflow: string, project: string) => `${workflow} (project ${project})`,
     boardColumn: (board: string, column: string) => `${board}, column ${column}`,
     problems: {

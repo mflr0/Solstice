@@ -2,6 +2,7 @@
   import { matches } from '../../core/admin-forms.js';
   import type { StatusRow, StatusUsage } from '../../core/admin-types.js';
   import { arrowAfterMove, moveItem, statusUnused } from '../../core/catalogs.js';
+  import { adminPath } from '../../core/areas.js';
   import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { paths } from '../../core/route.js';
   import { formatNumber } from '../../i18n/format.js';
@@ -294,9 +295,14 @@
           <ul>
             {#each usage.workflows as w (w.id)}
               <li>
-                <a href="{paths.projectSettings(w.project.key)}?tab=workflows"
-                  >{t.statusesAdmin.workflowIn(w.name, w.project.key)}</a
-                >
+                {#if w.project}
+                  <a href="{paths.projectSettings(w.project.key)}?tab=workflows"
+                    >{t.statusesAdmin.workflowIn(w.name, w.project.key)}</a
+                  >
+                {:else}
+                  <a href={adminPath('workflows', w.id)}>{t.statusesAdmin.workflowGlobal(w.name)}</a
+                  >
+                {/if}
               </li>
             {/each}
           </ul>

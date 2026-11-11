@@ -4,8 +4,10 @@
  * status"), change detection and the body sent to the server.
  */
 
+import type { GlobalWorkflow } from './admin-types.js';
 import {
   STATUS_CATEGORIES,
+  type ProjectWorkflows,
   type StatusCategory,
   type StatusRef,
   type StrandedDefault,
@@ -275,4 +277,30 @@ export function searchStatuses(catalogue: StatusRef[], taken: StatusRef[], q: st
 export function statusNamed(catalogue: StatusRef[], name: string): StatusRef | undefined {
   const n = name.trim().toLowerCase();
   return catalogue.find((s) => s.name.toLowerCase() === n);
+}
+
+/**
+ * The global workflows in the shape the editor takes: no issue type follows
+ * them and no issue is in them.
+ */
+export function globalWorkflowsData(
+  list: GlobalWorkflow[],
+  statuses: StatusRef[],
+): ProjectWorkflows {
+  return {
+    workflows: list.map((w) => ({ ...w, issueTypes: [], usage: {} })),
+    issueTypes: [],
+    statuses,
+    can: { edit: true },
+  };
+}
+
+/** Whether a global workflow may be deleted: never the default, which also keeps the last one. */
+export function canDeleteGlobal(w: GlobalWorkflow, list: GlobalWorkflow[]): boolean {
+  return !w.default && list.length > 1;
+}
+
+/** The body that makes a global workflow the default, leaving the rest of it as it is. */
+export function makeDefaultInput(w: GlobalWorkflow): WorkflowInput {
+  return toInput({ ...toDraft({ ...w, issueTypes: [], usage: {} }), makeDefault: true }, false);
 }

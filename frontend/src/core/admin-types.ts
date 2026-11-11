@@ -11,9 +11,11 @@ import type {
   IdName,
   Permission,
   StatusCategory,
+  StatusRef,
   TypeFill,
   TypeIcon,
   UserRef,
+  WorkflowTransition,
 } from './types.js';
 
 /* E-mail -------------------------------------------------------------------- */
@@ -561,9 +563,20 @@ export type CatalogInput = Omit<Partial<CatalogItem>, 'fill' | 'icon'> & {
 
 /** Where a status is used (GET /api/admin/statuses/{id}/usage). */
 export interface StatusUsage {
-  workflows: { id: number; name: string; project: { id: number; key: string; name: string } }[];
+  /** A global workflow has no project. */
+  workflows: { id: number; name: string; project?: { id: number; key: string; name: string } }[];
   boards: { id: number; name: string; column: string }[];
   projects: { key: string; name: string; issues: number }[];
+}
+
+/** A workflow of no project (GET /api/admin/workflows): projects get copies of it. */
+export interface GlobalWorkflow {
+  id: number;
+  name: string;
+  default: boolean;
+  initial: StatusRef;
+  statuses: StatusRef[];
+  transitions: WorkflowTransition[];
 }
 
 export interface StatusRow {

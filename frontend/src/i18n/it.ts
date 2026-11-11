@@ -1557,7 +1557,18 @@ export const it: Messages = {
     remapConfirm: 'Sposta e salva',
     remapDefault: (name: string) =>
       `Tipi di ticket che tornano al workflow predefinito «${name}»: i loro stati che quest’ultimo non ha`,
+    globalIsDefault: 'Il workflow globale predefinito.',
+    globalMakeDefaultHint: 'Il workflow proposto per primo.',
     remapDeleteConfirm: 'Sposta ed elimina',
+  },
+
+  adminWorkflows: {
+    intro:
+      'I workflow da cui i progetti possono partire. Un progetto ne riceve una copia propria: modificare un workflow qui non cambia mai quello di un progetto.',
+    makeDefault: 'Rendi predefinito',
+    madeDefault: (name: string) => `«${name}» è ora il workflow predefinito.`,
+    notFound: 'Questo workflow non esiste, o non esiste più.',
+    deleteKeep: 'I progetti mantengono i propri workflow: nessuno cambia.',
   },
 
   adminArea: {
@@ -1581,6 +1592,7 @@ export const it: Messages = {
       users: 'Utenti',
       groups: 'Gruppi',
       projects: 'Progetti',
+      workflows: 'Workflow',
       securityLevels: 'Livelli di riservatezza',
       issueTypes: 'Tipi di ticket',
       priorities: 'Priorità',
@@ -1605,6 +1617,7 @@ export const it: Messages = {
       groups: 'Raccogliere persone per dare loro i permessi insieme.',
       projects: 'Creare, rinominare, archiviare o eliminare un progetto.',
       issueTypes: 'Story, bug, task… e i sotto-task.',
+      workflows: 'I workflow da cui i progetti possono partire.',
       securityLevels: 'Chi vede i ticket di ogni livello di riservatezza di un progetto.',
       priorities: 'L’ordine di urgenza e il colore di ogni priorità.',
       resolutions: 'Come un ticket è stato chiuso: corretto, duplicato…',
@@ -3320,6 +3333,7 @@ export const it: Messages = {
     whereBoards: 'Colonne di board',
     whereIssues: 'Ticket',
     whereIssuesHint: 'Sposta prima questi ticket in un altro stato.',
+    workflowGlobal: (workflow: string) => `${workflow} (globale)`,
     workflowIn: (workflow: string, project: string) => `${workflow} (progetto ${project})`,
     boardColumn: (board: string, column: string) => `${board}, colonna ${column}`,
     problems: {

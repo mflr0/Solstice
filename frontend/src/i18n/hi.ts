@@ -1537,7 +1537,18 @@ export const hi: Messages = {
     remapConfirm: 'ले जाएँ और सहेजें',
     remapDefault: (name: string) =>
       `डिफ़ॉल्ट वर्कफ़्लो “${name}” पर लौटने वाले टिकट प्रकार: उनके वे स्टेटस जो इसमें नहीं हैं`,
+    globalIsDefault: 'डिफ़ॉल्ट ग्लोबल वर्कफ़्लो।',
+    globalMakeDefaultHint: 'सबसे पहले दिया जाने वाला वर्कफ़्लो।',
     remapDeleteConfirm: 'ले जाएँ और मिटाएँ',
+  },
+
+  adminWorkflows: {
+    intro:
+      'वे वर्कफ़्लो जिनसे प्रोजेक्ट शुरू हो सकते हैं। हर प्रोजेक्ट को अपनी कॉपी मिलती है: यहाँ वर्कफ़्लो बदलने से किसी प्रोजेक्ट का वर्कफ़्लो कभी नहीं बदलता।',
+    makeDefault: 'डिफ़ॉल्ट बनाएँ',
+    madeDefault: (name: string) => `“${name}” अब डिफ़ॉल्ट वर्कफ़्लो है।`,
+    notFound: 'यह वर्कफ़्लो मौजूद नहीं है, या अब नहीं है।',
+    deleteKeep: 'प्रोजेक्ट अपने वर्कफ़्लो रखते हैं: उनमें से कोई नहीं बदलता।',
   },
 
   adminArea: {
@@ -1561,6 +1572,7 @@ export const hi: Messages = {
       users: 'उपयोगकर्ता',
       groups: 'समूह',
       projects: 'प्रोजेक्ट',
+      workflows: 'वर्कफ़्लो',
       securityLevels: 'गोपनीयता स्तर',
       issueTypes: 'टिकट प्रकार',
       priorities: 'प्राथमिकताएँ',
@@ -1584,6 +1596,7 @@ export const hi: Messages = {
       users: 'खाते बनाना, उन्हें निष्क्रिय करना, पासवर्ड बदलना।',
       groups: 'लोगों को एक साथ जोड़कर उन्हें साथ में अनुमतियाँ देना।',
       projects: 'प्रोजेक्ट बनाना, नाम बदलना, संग्रह करना या मिटाना।',
+      workflows: 'वे वर्कफ़्लो जिनसे प्रोजेक्ट शुरू हो सकते हैं।',
       securityLevels: 'किसी प्रोजेक्ट के हर गोपनीयता स्तर के टिकट कौन देखता है।',
       issueTypes: 'स्टोरी, बग, टास्क… और सब-टास्क।',
       priorities: 'प्राथमिकताओं का क्रम और उनका रंग।',
@@ -3272,6 +3285,7 @@ export const hi: Messages = {
     whereBoards: 'बोर्ड कॉलम',
     whereIssues: 'टिकट',
     whereIssuesHint: 'पहले इन टिकटों को किसी दूसरे स्टेटस में ले जाएँ।',
+    workflowGlobal: (workflow: string) => `${workflow} (ग्लोबल)`,
     workflowIn: (workflow: string, project: string) => `${workflow} (प्रोजेक्ट ${project})`,
     boardColumn: (board: string, column: string) => `${board}, कॉलम ${column}`,
     problems: {

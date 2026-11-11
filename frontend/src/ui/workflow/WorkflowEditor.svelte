@@ -9,6 +9,7 @@
   } from '../../core/types.js';
   import {
     addStatus,
+    globalWorkflowsData,
     isDirty,
     removeStatus,
     strandedDefaultOf,
@@ -20,6 +21,7 @@
   } from '../../core/workflow.js';
   import { t } from '../../i18n/t.js';
   import { pinnedHeight } from '../../lib/actions.js';
+  import { adminApi } from '../../lib/admin-api.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { notify } from '../../lib/ui.svelte.js';
   import Dropdown from '../Dropdown.svelte';
@@ -33,10 +35,12 @@
   /**
    * One workflow: its name, start status, the issue types it serves, its
    * statuses and the transitions between them. Nothing is sent until saved;
-   * a save that would strand issues asks where they go first.
+   * a save that would strand issues asks where they go first. A global
+   * workflow (no project) has no issue types and no issues.
    */
   interface Props {
-    projectKey: string;
+    /** null: a global workflow. */
+    projectKey: string | null;
     workflow: Workflow;
     data: ProjectWorkflows;
     onsaved: (d: ProjectWorkflows) => void;
@@ -106,7 +110,13 @@
     withRemap?: Record<string, string>,
     withRemapDefault?: Record<string, string>,
   ): Promise<ProjectWorkflows> {
-    return api.saveWorkflow(base.id, toInput(draft, base.default, withRemap, withRemapDefault));
+    const input = toInput(draft, base.default, withRemap, withRemapDefault);
+    if (projectKey === null) {
+      return adminApi
+        .saveWorkflow(base.id, input)
+        .then((list) => globalWorkflowsData(list, data.statuses));
+    }
+    return api.saveWorkflow(base.id, input);
   }
 
   /** Adopts the workflows the server saved and tells the panel. */
@@ -210,7 +220,19 @@
             />
             <span class="hint">{t.workflows.initialHint}</span>
           </div>
-          {#if base.default}
+          {#if projectKey === null}
+            <div class="field">
+              {#if base.default}
+                <span class="hint">{t.workflows.globalIsDefault}</span>
+              {:else}
+                <label class="check">
+                  <input type="checkbox" class="checkbox" bind:checked={draft.makeDefault} />
+                  {t.workflows.makeDefault}
+                </label>
+                <span class="hint">{t.workflows.globalMakeDefaultHint}</span>
+              {/if}
+            </div>
+          {:else if base.default}
             <div class="field">
               <span class="field-label">{t.workflows.servedTypes}</span>
               <div class="types">
@@ -258,7 +280,7 @@
         {projectKey}
         statuses={draft.statuses}
         initial={draft.initial}
-        usage={base.usage}
+        usage={projectKey === null ? null : base.usage}
         {catalogue}
         {readonly}
         onreorder={(list) => (draft.statuses = list)}
@@ -315,22 +337,24 @@
   {/if}
 </div>
 
-<RemapDialog
-  {stranded}
-  {strandedDefault}
-  message={strandedMessage}
-  statuses={draft.statuses}
-  choice={remap}
-  choiceDefault={remapDefault}
-  busy={saving}
-  onchoose={(from, to) => (remap[from] = to)}
-  onchooseDefault={(from, to) => (remapDefault[from] = to)}
-  onconfirm={() => void save({ ...remap }, { ...remapDefault })}
-  onclose={() => {
-    stranded = null;
-    strandedDefault = null;
-  }}
-/>
+{#if projectKey !== null}
+  <RemapDialog
+    {stranded}
+    {strandedDefault}
+    message={strandedMessage}
+    statuses={draft.statuses}
+    choice={remap}
+    choiceDefault={remapDefault}
+    busy={saving}
+    onchoose={(from, to) => (remap[from] = to)}
+    onchooseDefault={(from, to) => (remapDefault[from] = to)}
+    onconfirm={() => void save({ ...remap }, { ...remapDefault })}
+    onclose={() => {
+      stranded = null;
+      strandedDefault = null;
+    }}
+  />
+{/if}
 
 <style>
   .crumbs {

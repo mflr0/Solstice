@@ -11,7 +11,8 @@
    * new status (name and category) when none has that name.
    */
   interface Props {
-    projectKey: string;
+    /** null: a global workflow. */
+    projectKey: string | null;
     catalogue: StatusRef[];
     taken: StatusRef[];
     onpick: (s: StatusRef) => void;
@@ -47,7 +48,11 @@
     busy = true;
     error = '';
     try {
-      const s = await api.createStatus({ name: q.trim(), category, project: projectKey });
+      const s = await api.createStatus({
+        name: q.trim(),
+        category,
+        ...(projectKey !== null ? { project: projectKey } : {}),
+      });
       pick(s);
     } catch (e) {
       error = errorMessage(e);

@@ -10,6 +10,7 @@
   import SettingsLayout from '../SettingsLayout.svelte';
   import AdminOverview from './AdminOverview.svelte';
   import AdminProjectsPage from './AdminProjectsPage.svelte';
+  import AdminWorkflowsPage from './AdminWorkflowsPage.svelte';
   import AuditPage from './AuditPage.svelte';
   import BannerPage from './BannerPage.svelte';
   import CatalogPage from './CatalogPage.svelte';
@@ -33,7 +34,7 @@
    */
   interface Props {
     section: AdminSection;
-    /** A page below the section (a webhook's id, "new"). */
+    /** A page below the section (a webhook's or a workflow's id, "new"). */
     item: string | null;
   }
   const props: Props = $props();
@@ -101,6 +102,8 @@
         <GroupsPage />
       {:else if section === 'projects'}
         <AdminProjectsPage />
+      {:else if section === 'workflows'}
+        <AdminWorkflowsPage {item} ondirty={(d) => (dirty = d)} />
       {:else if section === 'securityLevels'}
         <SecurityLevelsPage />
       {:else if section === 'issueTypes' && item !== null}

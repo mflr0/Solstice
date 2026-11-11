@@ -17,6 +17,7 @@ describe('adminPath', () => {
     ['mail', '/admin/mail'],
     ['issueTypes', '/admin/issue-types'],
     ['linkTypes', '/admin/link-types'],
+    ['workflows', '/admin/workflows'],
     ['updates', '/admin/updates'],
   ])('%s is %s', (item, want) => {
     expect(adminPath(item)).toBe(want);
@@ -24,6 +25,7 @@ describe('adminPath', () => {
 
   it('addresses an item below the section', () => {
     expect(adminPath('webhooks', 12)).toBe('/admin/webhooks/12');
+    expect(adminPath('workflows', 4)).toBe('/admin/workflows/4');
   });
 
   it('encodes the item of the address', () => {
@@ -35,6 +37,7 @@ describe('adminSectionOf', () => {
   it.each<[string, string]>([
     ['mail', 'mail'],
     ['issue-types', 'issueTypes'],
+    ['workflows', 'workflows'],
   ])('%s names %s', (slug, section) => {
     expect(adminSectionOf(slug)).toBe(section);
   });
@@ -54,6 +57,14 @@ describe('adminSectionOf', () => {
 
 describe('ADMIN_NAV', () => {
   const items = ADMIN_NAV.flatMap((group) => group.items);
+
+  it('puts the workflows in the projects group', () => {
+    expect(ADMIN_NAV.find((g) => g.group === 'projects')?.items).toEqual([
+      'projects',
+      'workflows',
+      'securityLevels',
+    ]);
+  });
 
   it.each(ADMIN_SECTIONS)('links %s exactly once', (section) => {
     expect(items.filter((item) => item === section).length).toBe(1);

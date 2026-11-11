@@ -6,14 +6,17 @@
   import StatusPicker from './StatusPicker.svelte';
 
   /**
-   * The workflow's statuses in order, with how many issues sit in each.
+   * The workflow's statuses in order, with how many issues sit in each
+   * (none for a global workflow).
    * Editable: reorder (drag, or the arrow buttons), remove, add.
    */
   interface Props {
-    projectKey: string;
+    /** null: a global workflow. */
+    projectKey: string | null;
     statuses: StatusRef[];
     initial: string;
-    usage: Record<string, number>;
+    /** Issues per status id; null when no issue follows the workflow. */
+    usage: Record<string, number> | null;
     catalogue: StatusRef[];
     readonly: boolean;
     onreorder: (statuses: StatusRef[]) => void;
@@ -71,7 +74,7 @@
       <span class="stamp-cell"><Stamp status={s} /></span>
       <span class="meta">
         <span class="cat">{categoryLabels[s.category]}</span>
-        <span class="num">{t.workflows.issues(usage[s.id] ?? 0)}</span>
+        {#if usage}<span class="num">{t.workflows.issues(usage[s.id] ?? 0)}</span>{/if}
         {#if s.id === initial}<span class="chip start">{t.workflows.start}</span>{/if}
       </span>
       {#if !readonly}

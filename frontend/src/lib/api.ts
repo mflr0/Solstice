@@ -492,7 +492,8 @@ export const api = {
     request<ProjectWorkflows>('PUT', `/api/workflows/${id}`, w),
   deleteWorkflow: (id: number, remapDefault?: Record<string, string>) =>
     request<void>('DELETE', `/api/workflows/${id}`, remapDefault ? { remapDefault } : undefined),
-  createStatus: (s: { name: string; category: StatusCategory; project: string }) =>
+  /** Project administrators name the project; global administrators may leave it out. */
+  createStatus: (s: { name: string; category: StatusCategory; project?: string }) =>
     request<StatusRef>('POST', '/api/statuses', s),
 
   // Search: saved filters and values to pick from.
