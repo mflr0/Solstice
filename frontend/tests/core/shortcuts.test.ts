@@ -125,6 +125,7 @@ describe('shortcutFor', () => {
   it('finds each key in its own scope only', () => {
     expect(on('/', 'global', true)).toBe('search');
     expect(on('c', 'global', true)).toBe('create');
+    expect(on('p', 'global', true)).toBe('scope');
     expect(on('?', 'global', true)).toBe('help');
     expect(on('d', 'global', true)).toBe('toggleScheme');
     expect(on('j', 'results', true)).toBe('next');

@@ -971,6 +971,7 @@ export const de: Messages = {
       create: 'Vorgang erstellen',
       help: 'Tastenkürzel anzeigen',
       toggleScheme: 'Zwischen hell und dunkel wechseln',
+      scope: 'Projekt wählen',
       next: 'Nächstes Ergebnis',
       previous: 'Vorheriges Ergebnis',
       left: 'Nach links',

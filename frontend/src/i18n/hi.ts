@@ -955,6 +955,7 @@ export const hi: Messages = {
       create: 'टिकट बनाएँ',
       help: 'शॉर्टकट दिखाएँ',
       toggleScheme: 'लाइट और डार्क के बीच बदलें',
+      scope: 'प्रोजेक्ट चुनें',
       next: 'अगला परिणाम',
       previous: 'पिछला परिणाम',
       left: 'बाएँ जाएँ',

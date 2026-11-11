@@ -66,6 +66,7 @@ export type ShortcutScope = 'global' | 'results' | 'issue';
 export type ShortcutAction =
   | 'search'
   | 'create'
+  | 'scope'
   | 'help'
   | 'toggleScheme'
   | 'next'
@@ -91,6 +92,7 @@ export interface Shortcut {
 export const SHORTCUTS: readonly Shortcut[] = [
   { scope: 'global', action: 'search', keys: ['/'] },
   { scope: 'global', action: 'create', keys: ['c'] },
+  { scope: 'global', action: 'scope', keys: ['p'] },
   { scope: 'global', action: 'help', keys: ['?'] },
   { scope: 'global', action: 'toggleScheme', keys: ['d'] },
   { scope: 'results', action: 'next', keys: ['j'] },

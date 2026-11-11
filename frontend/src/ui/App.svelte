@@ -18,6 +18,7 @@
     notify,
     openCreate,
     openDialogs,
+    scopeMenu,
     shownBoard,
     toggleScheme,
   } from '../lib/ui.svelte.js';
@@ -111,6 +112,9 @@
     } else if (action === 'create') {
       e.preventDefault();
       openCreate(project ? { project } : {});
+    } else if (action === 'scope') {
+      e.preventDefault();
+      scopeMenu.open = true;
     } else if (action === 'help') {
       e.preventDefault();
       dialogs.shortcuts = true;

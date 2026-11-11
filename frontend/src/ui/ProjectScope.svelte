@@ -7,29 +7,30 @@
   import { api, errorMessage } from '../lib/api.js';
   import { router } from '../lib/router.svelte.js';
   import { session } from '../lib/session.svelte.js';
-  import { notify } from '../lib/ui.svelte.js';
+  import { notify, scopeMenu } from '../lib/ui.svelte.js';
 
   /** The top bar's project switcher: which project Work, Projects, Boards and Search cover. */
-  let open = $state(false);
   let projects = $state<Project[] | null>(null);
+  let loading = false;
   let button: HTMLButtonElement | undefined = $state();
   const current = $derived(session.me?.project ?? null);
 
-  function toggle() {
-    open = !open;
-    if (open && !projects) {
-      api
-        .projects()
-        .then((p) => (projects = p))
-        .catch((e: unknown) => {
-          open = false;
-          notify(errorMessage(e), 'error');
-        });
-    }
-  }
+  // Opened by the button or by the shortcut: the projects load on the first opening.
+  $effect(() => {
+    if (!scopeMenu.open || projects || loading) return;
+    loading = true;
+    api
+      .projects()
+      .then((p) => (projects = p))
+      .catch((e: unknown) => {
+        scopeMenu.open = false;
+        notify(errorMessage(e), 'error');
+      })
+      .finally(() => (loading = false));
+  });
 
   async function choose(key: string | null) {
-    open = false;
+    scopeMenu.open = false;
     button?.focus();
     const from = session.scope;
     if (key === from) return;
@@ -69,15 +70,15 @@
   }
 </script>
 
-<div class="scope" data-tour="scope" use:outside={() => (open = false)}>
+<div class="scope" data-tour="scope" use:outside={() => (scopeMenu.open = false)}>
   <button
     bind:this={button}
     class="scope-button"
     aria-haspopup="menu"
-    aria-expanded={open}
+    aria-expanded={scopeMenu.open}
     aria-label={t.nav.scopeLabel(current?.name ?? t.nav.scopeAllProjects)}
     title={current?.name ?? t.nav.scopeAllProjects}
-    onclick={toggle}
+    onclick={() => (scopeMenu.open = !scopeMenu.open)}
   >
     <span class="scope-caption">{t.nav.scopeCaption}</span>
     <span class="scope-caption" aria-hidden="true">·</span>
@@ -85,8 +86,8 @@
     <span class="scope-key">{current?.key ?? t.nav.scopeAll}</span>
     <span class="caret" aria-hidden="true">▾</span>
   </button>
-  {#if open && projects}
-    <div class="popover scope-menu" role="menu" use:menu={() => (open = false)}>
+  {#if scopeMenu.open && projects}
+    <div class="popover scope-menu" role="menu" use:menu={() => (scopeMenu.open = false)}>
       <button
         class="item"
         role="menuitemradio"

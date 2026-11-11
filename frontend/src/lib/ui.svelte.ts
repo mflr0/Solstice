@@ -51,6 +51,9 @@ export const dialogs = $state<{
   tour: false,
 });
 
+/** Whether the top bar's project selector is open. */
+export const scopeMenu = $state({ open: false });
+
 export function openCreate(defaults: CreateDefaults = {}): void {
   dialogs.createDefaults = defaults;
   dialogs.create = true;
