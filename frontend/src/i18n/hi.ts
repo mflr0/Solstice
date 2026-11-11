@@ -36,9 +36,9 @@ export const hi: Messages = {
   },
 
   categories: {
-    todo: 'करना है',
-    doing: 'प्रगति में',
-    done: 'पूर्ण',
+    todo: 'शुरू नहीं हुआ',
+    doing: 'शुरू हुआ',
+    done: 'समाप्त',
   },
 
   permissions: {
@@ -602,7 +602,7 @@ export const hi: Messages = {
       membersOf: (group: string) => `${group} के सदस्य`,
     },
     shortcuts: 'शॉर्टकट',
-    categoryOnly: (name: string) => `श्रेणी: ${name}`,
+    categoryOnly: (name: string) => `चरण: ${name}`,
     released: 'रिलीज़ हुआ',
     datePresets: {
       today: 'आज',
@@ -659,7 +659,7 @@ export const hi: Messages = {
       project: 'प्रोजेक्ट',
       type: 'टिकट का प्रकार',
       status: 'स्टेटस',
-      statusCategory: 'स्टेटस की श्रेणी',
+      statusCategory: 'स्टेटस का चरण',
       assignee: 'असाइनी',
       reporter: 'रिपोर्टर',
       creator: 'निर्माता',
@@ -1512,7 +1512,7 @@ export const hi: Messages = {
     searchStatus: 'स्टेटस खोजें या बनाएँ',
     noMatch: 'कोई और स्टेटस मेल नहीं खाता।',
     createStatus: (name: string) => `“${name}” इस श्रेणी में बनाएँ:`,
-    createAs: 'नए स्टेटस की श्रेणी',
+    createAs: 'नए स्टेटस का चरण',
     sharedStatuses: 'स्टेटस सभी प्रोजेक्ट में साझा होते हैं, और उनके नाम भी।',
     diagram: 'डायग्राम',
     diagramLabel: (statuses: number, transitions: number) =>
@@ -3294,12 +3294,13 @@ export const hi: Messages = {
 
   statusesAdmin: {
     intro:
-      'वे स्टेटस जिनसे होकर टिकट गुज़रता है, सभी प्रोजेक्ट के लिए साझा। श्रेणी बोर्ड और रिपोर्ट को बताती है कि काम करना है, प्रगति में है या पूरा हो चुका है।',
+      'वे स्टेटस जिनसे होकर टिकट गुज़रता है, सभी प्रोजेक्ट के लिए साझा। स्टेटस का चरण तय करता है कि उसके टिकट शुरू नहीं हुए, शुरू हुए या समाप्त माने जाएँ। कॉलम हर बोर्ड में अलग से तय होते हैं।',
     newItem: 'नया स्टेटस',
     namePlaceholder: 'समीक्षा में, अटका हुआ…',
     search: 'स्टेटस खोजें',
-    category: 'श्रेणी',
-    categoryHint: 'स्टेटस का नाम कुछ भी हो, बोर्ड और रिपोर्ट श्रेणी के आधार पर चलते हैं।',
+    category: 'चरण',
+    categoryHint:
+      'तय करता है कि इस स्टेटस के टिकट शुरू नहीं हुए, शुरू हुए या समाप्त माने जाएँ: रिज़ॉल्यूशन, बैकलॉग, स्प्रिंट, नियत तारीख़ के रिमाइंडर और खोज। कॉलम हर बोर्ड में अलग से तय होते हैं।',
     empty: 'कोई स्टेटस नहीं',
     emptyHint: 'स्टेटस तब दिखते हैं जब कोई वर्कफ़्लो उनका इस्तेमाल करता है।',
     workflows: (n: number) => plural(n, 'वर्कफ़्लो', 'वर्कफ़्लो'),

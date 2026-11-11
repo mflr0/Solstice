@@ -301,8 +301,11 @@ func (c *compiler) lookup(cl Clause, col, tmpl string, norm func(string) string)
 
 var categories = map[string]issue.StatusCategory{
 	"to do": issue.Todo, "todo": issue.Todo, "new": issue.Todo, "à faire": issue.Todo, "a faire": issue.Todo,
+	"not started": issue.Todo, "pas commencé": issue.Todo, "pas commence": issue.Todo,
 	"in progress": issue.Doing, "indeterminate": issue.Doing, "doing": issue.Doing, "en cours": issue.Doing,
+	"started": issue.Doing, "commencé": issue.Doing, "commence": issue.Doing,
 	"done": issue.Done, "complete": issue.Done, "terminé": issue.Done, "termine": issue.Done,
+	"finished": issue.Done, "fini": issue.Done,
 }
 
 func (c *compiler) statusCategory(cl Clause) (string, error) {

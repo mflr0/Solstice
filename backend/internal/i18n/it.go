@@ -440,7 +440,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	StatusNameUnknown:        "Stato sconosciuto: %s.",
 	StatusNameRequired:       "Lo stato deve avere un nome.",
 	StatusNameTaken:          "Esiste già un altro stato chiamato «%s».",
-	StatusCategoryInvalid:    "Categoria: todo, doing o done.",
+	StatusCategoryInvalid:    "Fase: todo, doing o done.",
 	StatusInUse:              "Questo stato è ancora in uso. Rimuovilo prima dai workflow e dalle board e sposta i suoi ticket.",
 	StatusCategoryToDo:       "Da fare",
 	StatusCategoryInProgress: "In corso",

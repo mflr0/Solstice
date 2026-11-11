@@ -163,6 +163,11 @@ describe('jqlToFilters', () => {
     );
     expect(read('statusCategory not in (Done)').categories).toEqual(['todo', 'doing']);
     expect(read('statusCategory = "en cours"').categories).toEqual(['doing']);
+    expect(read('statusCategory = Finished').categories).toEqual(['done']);
+    expect(read('statusCategory in ("not started", "Commencé")').categories).toEqual([
+      'todo',
+      'doing',
+    ]);
     expect(read('due < startOfDay() AND watcher in (currentUser())')).toMatchObject({
       values: { people: ['currentUser()'] },
       peopleRole: 'watcher',
@@ -451,6 +456,9 @@ describe('simpleToJql', () => {
     ['@marie @paul.martin', 'assignee in (marie, paul.martin)'],
     ['statut:"En cours" type:Bug', 'status = "En cours" AND type = Bug'],
     ['-est:fini', 'statusCategory != Done'],
+    ['is:finished', 'statusCategory = Done'],
+    ['est:pas-commencé', 'statusCategory = "To Do"'],
+    ['is:started', 'statusCategory = "In Progress"'],
     ['-#bug -@personne', 'labels != bug AND assignee is not EMPTY'],
     ['panier vide DEMO-12', 'key = DEMO-12 AND text ~ "panier vide"'],
     ['"panier vide" -lent', 'text ~ "panier vide" AND text !~ "lent"'],

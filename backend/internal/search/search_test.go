@@ -109,3 +109,13 @@ func TestSQLKeys(t *testing.T) {
 		t.Fatalf("args %v", args)
 	}
 }
+
+func TestSQLCategoryStageNames(t *testing.T) {
+	for q, want := range map[string]string{"is:finished": "is:done", "est:pas-commencé": "est:a-faire", "is:started": "is:doing"} {
+		sql, args := Parse(q).SQL(1)
+		wantSQL, wantArgs := Parse(want).SQL(1)
+		if sql == "(FALSE)" || sql != wantSQL || !reflect.DeepEqual(args, wantArgs) {
+			t.Errorf("%s gave %s %v, want %s %v", q, sql, args, wantSQL, wantArgs)
+		}
+	}
+}

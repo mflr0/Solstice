@@ -35,9 +35,9 @@ export const it: Messages = {
   },
 
   categories: {
-    todo: 'Da fare',
-    doing: 'In corso',
-    done: 'Completato',
+    todo: 'Non iniziato',
+    doing: 'Iniziato',
+    done: 'Concluso',
   },
 
   permissions: {
@@ -611,7 +611,7 @@ export const it: Messages = {
       membersOf: (group: string) => `Membri di ${group}`,
     },
     shortcuts: 'Scorciatoie',
-    categoryOnly: (name: string) => `categoria ${name}`,
+    categoryOnly: (name: string) => `fase ${name}`,
     released: 'rilasciata',
     datePresets: {
       today: 'Oggi',
@@ -667,7 +667,7 @@ export const it: Messages = {
       project: 'progetto',
       type: 'tipo di ticket',
       status: 'stato',
-      statusCategory: 'categoria di stato',
+      statusCategory: 'fase di stato',
       assignee: 'assegnatario',
       reporter: 'segnalatore',
       creator: 'creatore',
@@ -1532,7 +1532,7 @@ export const it: Messages = {
     searchStatus: 'Cerca o crea uno stato',
     noMatch: 'Nessun altro stato corrisponde.',
     createStatus: (name: string) => `Crea «${name}» come:`,
-    createAs: 'Categoria del nuovo stato',
+    createAs: 'Fase del nuovo stato',
     sharedStatuses: 'Gli stati sono comuni a tutti i progetti, e così i loro nomi.',
     diagram: 'Schema',
     diagramLabel: (statuses: number, transitions: number) =>
@@ -3342,12 +3342,13 @@ export const it: Messages = {
 
   statusesAdmin: {
     intro:
-      'Gli stati che un ticket attraversa, comuni a tutti i progetti. La categoria dice alle board e ai report se il lavoro è da fare, in corso o completato.',
+      'Gli stati che un ticket attraversa, comuni a tutti i progetti. La fase di uno stato decide se i suoi ticket contano come non iniziati, iniziati o conclusi. Le colonne si impostano in ogni board.',
     newItem: 'Nuovo stato',
     namePlaceholder: 'In revisione, bloccato…',
     search: 'Cerca uno stato',
-    category: 'Categoria',
-    categoryHint: 'Board e report si basano sulla categoria, qualunque sia il nome dello stato.',
+    category: 'Fase',
+    categoryHint:
+      'Decide se i ticket in questo stato contano come non iniziati, iniziati o conclusi: risoluzione, backlog, sprint, promemoria di scadenza e ricerca. Le colonne si impostano in ogni board.',
     empty: 'Nessuno stato',
     emptyHint: 'Gli stati compaiono quando un workflow li usa.',
     workflows: (n: number) => plural(n, 'workflow', 'workflow'),

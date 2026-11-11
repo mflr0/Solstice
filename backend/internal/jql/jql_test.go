@@ -465,3 +465,16 @@ func TestCompileTextSkipsStopwords(t *testing.T) {
 		}
 	}
 }
+
+func TestCompileStatusCategoryStageNames(t *testing.T) {
+	for q, want := range map[string]string{
+		`statusCategory = "Finished"`:                   `statusCategory = done`,
+		`statusCategory in ("not started", "Commencé")`: `statusCategory in (todo, doing)`,
+	} {
+		where, args, _ := compile(t, q)
+		wantWhere, wantArgs, _ := compile(t, want)
+		if where != wantWhere || !reflect.DeepEqual(args, wantArgs) {
+			t.Errorf("%s compiled to %q %v, want %q %v", q, where, args, wantWhere, wantArgs)
+		}
+	}
+}
