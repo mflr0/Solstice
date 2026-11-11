@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"solstice/internal/db"
+	"solstice/internal/mail"
 )
 
 // Prefix starts every key.
@@ -57,6 +58,7 @@ type Settings struct {
 	HTTP HTTPSettings
 	LDAP LDAPSettings
 	OIDC OIDCSettings
+	Mail MailSettings
 }
 
 // DBSettings are Solstice's database and its connection pool.
@@ -158,6 +160,23 @@ type OIDCSettings struct {
 	Timeout time.Duration
 }
 
+// MailSettings are the SMTP server and the sender. Each one set here wins
+// over the Mail page; a key of the destination (host, port, security, user
+// name, password) brings in the whole destination.
+type MailSettings struct {
+	Enabled bool
+	Host    string
+	// Port defaults to the usual port of Security.
+	Port int
+	// Security is none, starttls (the default) or tls.
+	Security string
+	Username string
+	Password string
+	// From is the sender's address, FromName its display name.
+	From     string
+	FromName string
+}
+
 // Defaults returns the settings nothing sets. There is deliberately no
 // default database.
 func Defaults() Settings {
@@ -224,6 +243,28 @@ type Config struct {
 	// Unknown lists the keys of the file, and the SOLSTICE_ variables,
 	// Solstice does not know (typos, renamed settings).
 	Unknown []string
+
+	set map[string]bool // the keys given a value
+}
+
+// MailOverride returns the SMTP settings the configuration sets, which win
+// over the stored ones.
+func (c *Config) MailOverride() mail.Override {
+	m := &c.Mail
+	var fields []string
+	for _, f := range []struct {
+		p    any
+		name string
+	}{
+		{&m.Enabled, "enabled"}, {&m.Host, "host"}, {&m.Port, "port"}, {&m.Security, "security"},
+		{&m.Username, "username"}, {&m.Password, "password"}, {&m.From, "from"}, {&m.FromName, "fromName"},
+	} {
+		if c.set[keyOf(&c.Settings, f.p)] {
+			fields = append(fields, f.name)
+		}
+	}
+	return mail.NewOverride(mail.Config{Enabled: m.Enabled, Host: m.Host, Port: m.Port, Security: m.Security,
+		Username: m.Username, Password: m.Password, From: m.From, FromName: m.FromName}, fields)
 }
 
 // Load reads the configuration. env is the environment, as os.Environ
@@ -247,11 +288,14 @@ func Load(env []string) (*Config, error) {
 		return nil, err
 	}
 	c := &Config{Settings: Defaults(), Path: src.path, Exists: exists}
-	if err := src.apply(&c.Settings); err != nil {
+	if c.set, err = src.apply(&c.Settings); err != nil {
 		return nil, err
 	}
 	c.Unknown = src.unknown()
 	if err := c.check(); err != nil {
+		return nil, err
+	}
+	if err := c.checkMail(c.set); err != nil {
 		return nil, err
 	}
 	return c, nil
@@ -300,9 +344,11 @@ type sources struct {
 	path      string
 }
 
-// apply sets over s every setting src gives a value; an empty value counts
-// as unset. An error on a value of the file names the file.
-func (src sources) apply(s *Settings) error {
+// apply sets over s every setting src gives a value, and returns their keys;
+// an empty value counts as unset. An error on a value of the file names the
+// file.
+func (src sources) apply(s *Settings) (map[string]bool, error) {
+	set := map[string]bool{}
 	for _, f := range fields(s) {
 		raw, inFile := src.env[f.key], false
 		if raw == "" {
@@ -313,12 +359,13 @@ func (src sources) apply(s *Settings) error {
 		}
 		if err := f.set(raw); err != nil {
 			if inFile {
-				return fmt.Errorf("%s in %s: %w", f.key, src.path, err)
+				return nil, fmt.Errorf("%s in %s: %w", f.key, src.path, err)
 			}
-			return fmt.Errorf("%s: %w", f.key, err)
+			return nil, fmt.Errorf("%s: %w", f.key, err)
 		}
+		set[f.key] = true
 	}
-	return nil
+	return set, nil
 }
 
 // unknown returns, sorted and each once, the keys of the file and the
@@ -421,6 +468,39 @@ func (s *Settings) checkOIDC() error {
 		{o.UsernameClaim == "", &o.UsernameClaim, "a claim name"},
 		{o.GroupsClaim == "", &o.GroupsClaim, "a claim name"},
 		{o.Timeout <= 0, &o.Timeout, "a positive duration"},
+	} {
+		if r.bad {
+			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)
+		}
+	}
+	return nil
+}
+
+// checkMail rejects, among the SMTP settings set, what the Mail page would
+// refuse, and a destination without a server.
+func (s *Settings) checkMail(set map[string]bool) error {
+	m := &s.Mail
+	given := func(p any) bool { return set[keyOf(s, p)] }
+	security := m.Security
+	if security == "" {
+		security = mail.SecurityStartTLS
+	}
+	for _, r := range []struct {
+		bad  bool
+		p    any
+		want string
+	}{
+		{given(&m.Security) && !slices.Contains([]string{mail.SecurityNone, mail.SecurityStartTLS, mail.SecurityTLS}, m.Security),
+			&m.Security, "none, starttls or tls"},
+		{given(&m.Port) && (m.Port < 1 || m.Port > 65535), &m.Port, "a port between 1 and 65535"},
+		{given(&m.From) && !mail.ValidAddress(m.From), &m.From, "a plain e-mail address, e.g. tickets@example.org"},
+		{m.Enabled && m.Host == "", &m.Host, "set with " + keyOf(s, &m.Enabled) + "=true"},
+		{m.Host == "" && given(&m.Port), &m.Host, "set with " + keyOf(s, &m.Port)},
+		{m.Host == "" && given(&m.Security), &m.Host, "set with " + keyOf(s, &m.Security)},
+		{m.Host == "" && given(&m.Username), &m.Host, "set with " + keyOf(s, &m.Username)},
+		{m.Host == "" && given(&m.Password), &m.Host, "set with " + keyOf(s, &m.Password)},
+		{m.Username != "" && security == mail.SecurityNone && !mail.Loopback(m.Host), &m.Security,
+			"starttls or tls with " + keyOf(s, &m.Username) + ", or the credentials travel in clear"},
 	} {
 		if r.bad {
 			return fmt.Errorf("%s: must be %s", keyOf(s, r.p), r.want)

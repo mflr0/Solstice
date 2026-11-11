@@ -13,8 +13,8 @@ What lives where:
 
 - The configuration file and environment variables only bootstrap the
   server: database URL, data directory, listen address, and LDAP and OpenID
-  Connect sign-in. See
-  `solstice -h`.
+  Connect sign-in. They may also set the SMTP settings, which then win over
+  the E-mail page (see [E-mail](#e-mail)). See `solstice -h`.
 - Everything else described below is stored in the database and applies at once,
   without a restart.
 - Every change made in the administration is written to the audit log.
@@ -454,6 +454,26 @@ invitations and password reset links through one SMTP server.
 - The outbox shows pending, failed and recently sent messages. "Retry failed
   sends" is useful after fixing the settings.
 - Unchecking "Send email" keeps the settings but stops all sending.
+
+The `SOLSTICE_MAIL_` keys of the configuration file or the environment set
+the same settings, as an override: `SOLSTICE_MAIL_ENABLED`, `_HOST`, `_PORT`,
+`_SECURITY` (`none`, `starttls` or `tls`), `_USERNAME`, `_PASSWORD`, `_FROM`
+and `_FROMNAME`. Without any of them, the page alone decides.
+
+- Each key set wins over the page; the others come from the page.
+- The server, port, security, user name and password go together: set one of
+  them and all five come from the configuration, the unset port and security
+  taking their defaults. The password stored on the page is then never sent
+  to a server the configuration chose, nor the configured password to one the
+  page chose.
+- Saving the page leaves the settings the configuration sets as they are
+  stored, and the audit log records no change for them. The configured values,
+  the password among them, are never written to the database.
+- Solstice refuses to start on what the page would refuse: an unknown
+  security mode, a port outside 1–65535, a sender that is not a plain address,
+  `SOLSTICE_MAIL_ENABLED=true` without a server, a user name over a
+  connection without TLS to another machine. It also refuses a port,
+  security, user name or password without a server.
 
 ### Webhooks
 

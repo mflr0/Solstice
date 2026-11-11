@@ -74,7 +74,7 @@ func (s *Server) linkConfig(ctx context.Context) (mail.Config, bool) {
 	if s.db == nil {
 		return mail.Config{}, false
 	}
-	cfg, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
+	cfg, err := s.mailConfig(ctx)
 	if err != nil {
 		s.log.Warn("reading the mail settings failed", "err", err)
 		return cfg, false

@@ -41,7 +41,8 @@ type outgoing struct {
 	notify   *notify.Service
 	hooks    *webhook.Service
 
-	secretKey string // SOLSTICE_SECRETKEY; empty: <data>/secret.key
+	secretKey string        // SOLSTICE_SECRETKEY; empty: <data>/secret.key
+	mailFixed mail.Override // the SMTP settings of the configuration file
 	boxMu     sync.Mutex
 	box       *secret.Box
 }
@@ -54,7 +55,7 @@ func (s *Server) startOutgoing() {
 	o.bus = events.NewBus(s.db, s.log)
 	o.bus.OnPublish(s.toLive)
 	o.bus.LoadCustom(s.eventCustom)
-	config := func(ctx context.Context) (mail.Config, error) { return mail.LoadConfig(ctx, o.settings, s.secrets) }
+	config := s.mailConfig
 	o.outbox = mail.NewOutbox(s.db, s.log, config)
 	o.notify = notify.New(s.db, s.perms, o.outbox, s.tz, s.log, config, filterRunner{s})
 	o.notify.BaseURL = s.base
@@ -75,6 +76,17 @@ func (s *Server) SetSecretKey(key string) {
 	s.out.boxMu.Lock()
 	s.out.secretKey, s.out.box = key, nil
 	s.out.boxMu.Unlock()
+}
+
+// SetMailOverride sets the SMTP settings of the configuration file, which win
+// over the stored ones. Call it before the server takes requests.
+func (s *Server) SetMailOverride(o mail.Override) { s.out.mailFixed = o }
+
+// mailConfig is the SMTP settings in effect: the stored ones under those of
+// the configuration file.
+func (s *Server) mailConfig(ctx context.Context) (mail.Config, error) {
+	c, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
+	return s.out.mailFixed.Apply(c), err
 }
 
 // secrets opens the key on first use.
@@ -235,7 +247,7 @@ func (s *Server) prefsOut(ctx context.Context, userID int64) (*prefsOut, error) 
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
+	cfg, err := s.mailConfig(ctx)
 	tz := s.zone()
 	zone := tz.String()
 	if zone == "Local" { // no time zone set: the system's, which has no name here
@@ -398,6 +410,8 @@ type mailSettingsOut struct {
 	PasswordSet bool    `json:"passwordSet"`
 	BaseURL     *string `json:"baseUrl"`           // links in e-mails; null: not set, links left out
 	Problem     string  `json:"problem,omitempty"` // what keeps the saved settings from sending, see mailProblem
+	// FromConfig lists the fields the configuration file sets, which a save leaves alone.
+	FromConfig []string `json:"fromConfig"`
 }
 
 // mailProblemCredentialsNeedTLS is the problem of settings saved before
@@ -418,8 +432,12 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	cfg = cfg.WithDefaults()
-	out := mailSettingsOut{Config: cfg, PasswordSet: set}
+	fixed := s.out.mailFixed
+	cfg = fixed.Apply(cfg)
+	if fixed.Sets("password") {
+		set = cfg.Password != ""
+	}
+	out := mailSettingsOut{Config: cfg, PasswordSet: set, FromConfig: slices.Concat([]string{}, fixed.Fields)}
 	if credentialsInClear(cfg) {
 		out.Problem = mailProblemCredentialsNeedTLS
 	}
@@ -441,8 +459,9 @@ type mailSettingsIn struct {
 	From     *string         `json:"from"`
 	FromName *string         `json:"fromName"`
 	// Read-only fields sent back as received are accepted.
-	PasswordSet *bool   `json:"passwordSet"`
-	BaseURL     *string `json:"baseUrl"`
+	PasswordSet *bool     `json:"passwordSet"`
+	BaseURL     *string   `json:"baseUrl"`
+	FromConfig  *[]string `json:"fromConfig"`
 }
 
 // putMailSettings saves the SMTP settings. The password is kept when left
@@ -460,6 +479,8 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	fixed := s.out.mailFixed
+	in.skip(fixed)
 	keepPassword := in.Password == nil
 	password, err := s.mailPassword(ctx, in.Password)
 	if err != nil {
@@ -467,7 +488,7 @@ func (s *Server) putMailSettings(w http.ResponseWriter, r *http.Request) error {
 	}
 	cfg := in.merge(before)
 	cfg.Password = password
-	if err := validateMailSettings(cfg); err != nil {
+	if err := validateMailSettings(fixed.Apply(cfg)); err != nil {
 		return err
 	}
 	if err := mailCredentialsRule(before, cfg, keepPassword, hadPassword); err != nil {
@@ -504,6 +525,23 @@ func (s *Server) mailPassword(ctx context.Context, raw json.RawMessage) (string,
 		return "", nil
 	}
 	return *p, nil
+}
+
+// skip leaves out the fields the configuration file sets: their stored
+// values stay as they are.
+func (in *mailSettingsIn) skip(fixed mail.Override) {
+	if fixed.Sets("enabled") {
+		in.Enabled = nil
+	}
+	if fixed.Sets("host") {
+		in.Host, in.Port, in.Security, in.Username, in.Password = nil, nil, nil, nil, nil
+	}
+	if fixed.Sets("from") {
+		in.From = nil
+	}
+	if fixed.Sets("fromName") {
+		in.FromName = nil
+	}
 }
 
 // merge lays the fields the request gives over the stored settings c, the
@@ -627,7 +665,7 @@ func (s *Server) testMail(w http.ResponseWriter, r *http.Request) error {
 	if !mail.ValidAddress(to) {
 		return fail(http.StatusBadRequest, i18n.MailRecipientInvalid)
 	}
-	cfg, err := mail.LoadConfig(r.Context(), s.out.settings, s.secrets)
+	cfg, err := s.mailConfig(r.Context())
 	if err != nil {
 		s.log.Error("stored mail password not readable", "err", err)
 		return failf(http.StatusInternalServerError, i18n.MailPasswordUnreadable, i18n.M(i18n.RequestInternalError))
@@ -919,7 +957,7 @@ func (s *Server) runSubscription(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	cfg, err := mail.LoadConfig(r.Context(), s.out.settings, s.secrets)
+	cfg, err := s.mailConfig(r.Context())
 	if err != nil || !cfg.Enabled {
 		return fail(http.StatusConflict, i18n.MailDisabled)
 	}

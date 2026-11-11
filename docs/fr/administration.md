@@ -13,7 +13,9 @@ Ce qui se règle où :
 
 - Le fichier de configuration et les variables d'environnement ne servent qu'à
   démarrer le serveur : URL de la base, répertoire de données, adresse
-  d'écoute, et connexion LDAP et OpenID Connect. Voir `solstice -h`.
+  d'écoute, et connexion LDAP et OpenID Connect. Ils peuvent aussi fixer les
+  réglages SMTP, qui l'emportent alors sur la page E-mail (voir
+  [E-mail](#e-mail)). Voir `solstice -h`.
 - Tout le reste de ce qui suit est stocké dans la base de données et s'applique tout de
   suite, sans redémarrage.
 - Chaque changement fait dans l'administration est écrit dans le journal
@@ -500,6 +502,28 @@ de passe par un seul serveur SMTP.
   réglages.
 - Décocher « Envoyer des e-mails » conserve les réglages mais arrête tout
   envoi.
+
+Les clés `SOLSTICE_MAIL_` du fichier de configuration ou de l'environnement
+fixent les mêmes réglages, en priorité sur la page : `SOLSTICE_MAIL_ENABLED`,
+`_HOST`, `_PORT`, `_SECURITY` (`none`, `starttls` ou `tls`), `_USERNAME`,
+`_PASSWORD`, `_FROM` et `_FROMNAME`. Sans aucune d'elles, la page décide
+seule.
+
+- Chaque clé fixée l'emporte sur la page ; les autres viennent de la page.
+- Le serveur, le port, la sécurité, l'identifiant et le mot de passe vont
+  ensemble : fixez-en un et les cinq viennent de la configuration, le port et
+  la sécurité non fixés prenant leur valeur par défaut. Le mot de passe
+  enregistré sur la page n'est alors jamais envoyé à un serveur choisi par la
+  configuration, ni le mot de passe configuré à un serveur choisi par la page.
+- Enregistrer la page laisse tels qu'ils sont stockés les réglages que fixe la
+  configuration, et le journal d'audit n'enregistre aucun changement pour eux.
+  Les valeurs configurées, mot de passe compris, ne sont jamais écrites dans
+  la base.
+- Solstice refuse de démarrer sur ce que la page refuserait : une sécurité
+  inconnue, un port hors de 1–65535, un expéditeur qui n'est pas une simple
+  adresse, `SOLSTICE_MAIL_ENABLED=true` sans serveur, un identifiant sur une
+  connexion sans TLS vers une autre machine. Il refuse aussi un port, une
+  sécurité, un identifiant ou un mot de passe sans serveur.
 
 ### Webhooks
 

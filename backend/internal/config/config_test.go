@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"solstice/internal/mail"
 )
 
 func env(vars map[string]string) []string {
@@ -107,7 +109,9 @@ func TestKeys(t *testing.T) {
 		"SOLSTICE_LDAP_GROUPNAMEATTR", "SOLSTICE_LDAP_REQUIREGROUP", "SOLSTICE_LDAP_ADMINGROUP", "SOLSTICE_LDAP_TIMEOUT",
 		"SOLSTICE_OIDC_ISSUER", "SOLSTICE_OIDC_CLIENTID", "SOLSTICE_OIDC_CLIENTSECRET", "SOLSTICE_OIDC_NAME",
 		"SOLSTICE_OIDC_SCOPES", "SOLSTICE_OIDC_USERNAMECLAIM", "SOLSTICE_OIDC_GROUPSCLAIM",
-		"SOLSTICE_OIDC_REQUIREGROUP", "SOLSTICE_OIDC_ADMINGROUP", "SOLSTICE_OIDC_TIMEOUT"}
+		"SOLSTICE_OIDC_REQUIREGROUP", "SOLSTICE_OIDC_ADMINGROUP", "SOLSTICE_OIDC_TIMEOUT",
+		"SOLSTICE_MAIL_ENABLED", "SOLSTICE_MAIL_HOST", "SOLSTICE_MAIL_PORT", "SOLSTICE_MAIL_SECURITY",
+		"SOLSTICE_MAIL_USERNAME", "SOLSTICE_MAIL_PASSWORD", "SOLSTICE_MAIL_FROM", "SOLSTICE_MAIL_FROMNAME"}
 	if !reflect.DeepEqual(Keys, want) {
 		t.Errorf("got %v\nwant %v", Keys, want)
 	}
@@ -163,6 +167,14 @@ func TestLoadEverySetting(t *testing.T) {
 		"SOLSTICE_OIDC_REQUIREGROUP":    "staff",
 		"SOLSTICE_OIDC_ADMINGROUP":      "it",
 		"SOLSTICE_OIDC_TIMEOUT":         "4s",
+		"SOLSTICE_MAIL_ENABLED":         "true",
+		"SOLSTICE_MAIL_HOST":            "smtp.example",
+		"SOLSTICE_MAIL_PORT":            "2525",
+		"SOLSTICE_MAIL_SECURITY":        "tls",
+		"SOLSTICE_MAIL_USERNAME":        "relay",
+		"SOLSTICE_MAIL_PASSWORD":        "smtp-pw",
+		"SOLSTICE_MAIL_FROM":            "tickets@example.org",
+		"SOLSTICE_MAIL_FROMNAME":        "Tickets",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -183,6 +195,8 @@ func TestLoadEverySetting(t *testing.T) {
 		OIDC: OIDCSettings{Issuer: "https://id.example/realms/staff", ClientID: "solstice", ClientSecret: "s",
 			Name: "Example ID", Scopes: "openid email groups", UsernameClaim: "upn", GroupsClaim: "roles",
 			RequireGroup: "staff", AdminGroup: "it", Timeout: 4 * time.Second},
+		Mail: MailSettings{Enabled: true, Host: "smtp.example", Port: 2525, Security: "tls", Username: "relay",
+			Password: "smtp-pw", From: "tickets@example.org", FromName: "Tickets"},
 	}
 	if !reflect.DeepEqual(c.Settings, want) {
 		t.Errorf("got %+v\nwant %+v", c.Settings, want)
@@ -311,6 +325,98 @@ func TestCheckOIDC(t *testing.T) {
 		bad(&s.OIDC)
 		if err := s.check(); err == nil || !strings.HasPrefix(err.Error(), key+":") {
 			t.Errorf("%s: %v, want an error naming the key", key, err)
+		}
+	}
+}
+
+func TestMailOverride(t *testing.T) {
+	absent := filepath.Join(t.TempDir(), "absent.conf")
+	load := func(vars map[string]string) mail.Override {
+		t.Helper()
+		vars[KeyConfig] = absent
+		c, err := Load(env(vars))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c.MailOverride()
+	}
+	stored := mail.Config{Enabled: true, Host: "smtp.stored", Port: 2525, Security: mail.SecurityTLS,
+		Username: "stored", Password: "stored-pw", From: "stored@example.org", FromName: "Stored"}
+
+	// Nothing set: the stored settings, untouched.
+	if o := load(map[string]string{}); len(o.Fields) != 0 || o.Apply(stored) != stored {
+		t.Errorf("nothing set: %+v gives %+v", o, o.Apply(stored))
+	}
+	// Per key: what is set wins, the rest is stored. false is a value.
+	o := load(map[string]string{"SOLSTICE_MAIL_ENABLED": "false", "SOLSTICE_MAIL_FROMNAME": "Tickets"})
+	want := stored
+	want.Enabled, want.FromName = false, "Tickets"
+	if got := o.Apply(stored); got != want || !slices.Equal(o.Fields, []string{"enabled", "fromName"}) {
+		t.Errorf("enabled and name: %v, %+v", o.Fields, got)
+	}
+	o = load(map[string]string{"SOLSTICE_MAIL_FROM": "tickets@example.org"})
+	want = stored
+	want.From = "tickets@example.org"
+	if got := o.Apply(stored); got != want {
+		t.Errorf("from: %+v", got)
+	}
+	// One key of the destination brings in all five: the stored password
+	// never goes to the configured server, and port and security default.
+	destination := []string{"host", "port", "security", "username", "password"}
+	o = load(map[string]string{"SOLSTICE_MAIL_HOST": "smtp.example"})
+	want = stored
+	want.Host, want.Port, want.Security, want.Username, want.Password = "smtp.example", 587, mail.SecurityStartTLS, "", ""
+	if got := o.Apply(stored); got != want || !slices.Equal(o.Fields, destination) {
+		t.Errorf("host: %v, %+v", o.Fields, got)
+	}
+	o = load(map[string]string{"SOLSTICE_MAIL_HOST": "smtp.example", "SOLSTICE_MAIL_SECURITY": "none"})
+	if got := o.Apply(stored); got.Port != 25 || got.Password != "" {
+		t.Errorf("host without TLS: %+v", got)
+	}
+	o = load(map[string]string{"SOLSTICE_MAIL_HOST": "smtp.example", "SOLSTICE_MAIL_USERNAME": "relay",
+		"SOLSTICE_MAIL_PASSWORD": "pw", "SOLSTICE_MAIL_PORT": "2465", "SOLSTICE_MAIL_SECURITY": "tls"})
+	want = stored
+	want.Host, want.Port, want.Security, want.Username, want.Password = "smtp.example", 2465, mail.SecurityTLS, "relay", "pw"
+	if got := o.Apply(stored); got != want || !slices.Equal(o.Fields, destination) {
+		t.Errorf("destination: %v, %+v", o.Fields, got)
+	}
+}
+
+func TestCheckMail(t *testing.T) {
+	absent := filepath.Join(t.TempDir(), "absent.conf")
+	for _, ok := range []map[string]string{
+		{},
+		{"SOLSTICE_MAIL_ENABLED": "false"},
+		{"SOLSTICE_MAIL_FROM": "tickets@example.org"},
+		{"SOLSTICE_MAIL_ENABLED": "true", "SOLSTICE_MAIL_HOST": "smtp.example"},
+		{"SOLSTICE_MAIL_HOST": "smtp.example", "SOLSTICE_MAIL_USERNAME": "relay", "SOLSTICE_MAIL_PASSWORD": "pw"},
+		{"SOLSTICE_MAIL_HOST": "localhost", "SOLSTICE_MAIL_SECURITY": "none", "SOLSTICE_MAIL_USERNAME": "relay"},
+		{"SOLSTICE_MAIL_HOST": "smtp.example", "SOLSTICE_MAIL_SECURITY": "none", "SOLSTICE_MAIL_PORT": "65535"},
+	} {
+		ok[KeyConfig] = absent
+		if _, err := Load(env(ok)); err != nil {
+			t.Errorf("%v: %v", ok, err)
+		}
+	}
+	for _, bad := range []struct {
+		key  string
+		vars map[string]string
+	}{
+		{"SOLSTICE_MAIL_SECURITY", map[string]string{"SOLSTICE_MAIL_HOST": "smtp.example", "SOLSTICE_MAIL_SECURITY": "ssl"}},
+		{"SOLSTICE_MAIL_PORT", map[string]string{"SOLSTICE_MAIL_HOST": "smtp.example", "SOLSTICE_MAIL_PORT": "0"}},
+		{"SOLSTICE_MAIL_PORT", map[string]string{"SOLSTICE_MAIL_HOST": "smtp.example", "SOLSTICE_MAIL_PORT": "65536"}},
+		{"SOLSTICE_MAIL_FROM", map[string]string{"SOLSTICE_MAIL_FROM": "Tickets <tickets@example.org>"}},
+		{"SOLSTICE_MAIL_FROM", map[string]string{"SOLSTICE_MAIL_FROM": "tickets"}},
+		{"SOLSTICE_MAIL_HOST", map[string]string{"SOLSTICE_MAIL_ENABLED": "true"}},
+		{"SOLSTICE_MAIL_HOST", map[string]string{"SOLSTICE_MAIL_PASSWORD": "pw"}},
+		{"SOLSTICE_MAIL_HOST", map[string]string{"SOLSTICE_MAIL_USERNAME": "relay"}},
+		{"SOLSTICE_MAIL_SECURITY", map[string]string{"SOLSTICE_MAIL_HOST": "smtp.example", "SOLSTICE_MAIL_SECURITY": "none",
+			"SOLSTICE_MAIL_USERNAME": "relay", "SOLSTICE_MAIL_PASSWORD": "s3cret"}},
+	} {
+		bad.vars[KeyConfig] = absent
+		_, err := Load(env(bad.vars))
+		if err == nil || !strings.HasPrefix(err.Error(), bad.key+":") || strings.Contains(err.Error(), "s3cret") {
+			t.Errorf("%v: %v, want an error naming %s", bad.vars, err, bad.key)
 		}
 	}
 }

@@ -807,14 +807,20 @@ Filter subscriptions (scheduled e-mail of a filter's results):
 ### Mail
 
 - `GET /api/admin/mail` → `{enabled, host, port, security, username, from,
-  fromName, passwordSet, baseUrl}` — the SMTP settings. The password is
-  never sent back, only `passwordSet` (bool); `baseUrl` (string | null) is
-  the public address links in e-mails are built from. `security`: `none` |
-  `starttls` (default) | `tls`; an empty saved configuration means STARTTLS
-  and its usual port.
+  fromName, passwordSet, baseUrl, fromConfig}` — the SMTP settings in effect:
+  the saved ones under those of the configuration file (`SOLSTICE_MAIL_*`).
+  The password is never sent back, only `passwordSet` (bool); `baseUrl`
+  (string | null) is the public address links in e-mails are built from.
+  `security`: `none` | `starttls` (default) | `tls`; an empty saved
+  configuration means STARTTLS and its usual port. `fromConfig` lists the
+  fields the configuration file sets (`[]` when none), among `enabled`,
+  `host`, `port`, `security`, `username`, `password`, `from`, `fromName`;
+  the five of the destination (`host` to `password`) always come together.
 - `PUT /api/admin/mail` any subset of `{enabled, host, port, security,
   username, password, from, fromName}` → the settings as GET. The password
-  is left out to keep it, `null` or `""` to remove it; keeping it while
+  is left out to keep it, `null` or `""` to remove it. Fields listed in
+  `fromConfig` are ignored: their saved values stay as they are, and the
+  audit log records no change for them. Keeping the password while
   changing the server, port, security or user name is refused (400):
   whoever can change the destination must send the password again rather
   than collect it on a server of their own. `security: none` with a user
