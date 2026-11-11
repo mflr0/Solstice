@@ -1149,6 +1149,13 @@ export const it: Messages = {
     notAdmin: 'Per creare una board in questo progetto devi esserne amministratore.',
     noProject: 'Non hai accesso a nessun progetto.',
 
+    rail: 'Cambia board',
+    railCollapse: 'Comprimi l’elenco delle board',
+    railExpand: 'Espandi l’elenco delle board',
+    allBoards: 'Tutte le board',
+    newBoard: 'Nuova board',
+    otherProjects: 'Altri progetti',
+
     views: 'Vista',
     viewBoard: 'Board',
     viewBacklog: 'Backlog',

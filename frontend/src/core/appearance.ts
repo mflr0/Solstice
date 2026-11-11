@@ -76,6 +76,7 @@ export const MODES: readonly Mode[] = ['system', 'light', 'dark'];
 export const STORAGE_KEYS = {
   skin: 'solstice.skin',
   mode: 'solstice.theme',
+  boardRail: 'solstice.boardRail',
 } as const;
 
 export function parseSkin(value: string | null | undefined): Skin {

@@ -43,8 +43,10 @@
 <header class="page-head board-head">
   <div class="title">
     <p class="eyebrow">
-      <a href={boardListPath(detail.projects, session.scope)}>{t.boards.title}</a> · {t.boards
-        .kinds[b.kind]}
+      <a class="back" href={boardListPath(detail.projects, session.scope)}
+        ><span class="glyph" aria-hidden="true">←</span>{t.boards.title}</a
+      >
+      · {t.boards.kinds[b.kind]}
     </p>
     <h1 class="page-title">{b.name}</h1>
     {#if detail.projects.length}
@@ -108,13 +110,18 @@
     min-width: 0;
   }
 
-  .eyebrow a {
-    color: inherit;
-    text-decoration: none;
+  .back {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: underline;
   }
 
-  .eyebrow a:hover {
-    text-decoration: underline;
+  .back:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  .glyph {
+    margin-inline-end: 0.3em;
   }
 
   .projects {

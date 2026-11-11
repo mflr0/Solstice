@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { BoardKind, BoardSummary } from '../../core/board-types.js';
   import { paths } from '../../core/route.js';
   import { boardsLanding, scopeBoards } from '../../core/scope.js';
@@ -33,6 +34,16 @@
   );
   const shown = $derived(scopeBoards(boards ?? [], project || null));
 
+  let creating = $state(false);
+  // ?create=1 opens the dialog once, then leaves the address.
+  let cameToCreate = $state(false);
+  $effect(() => {
+    if (router.param('create') === null) return;
+    cameToCreate = true;
+    untrack(openCreate);
+    router.setParams({ create: null });
+  });
+
   // The bare list opens on the scoped project once per scope: picking "All
   // projects" in the filter afterwards stays on every board.
   let landedFor: string | null | undefined;
@@ -41,11 +52,14 @@
     if (!boards || landedFor === scope) return;
     landedFor = scope;
     if (project) return;
-    const to = boardsLanding(boards, scope);
+    const to = boardsLanding(
+      boards,
+      scope,
+      untrack(() => cameToCreate),
+    );
     if (to) router.navigate(to, { replace: true });
   });
 
-  let creating = $state(false);
   let projects = $state<Project[] | null>(null);
   let form = $state<{ name: string; kind: BoardKind; project: string }>({
     name: '',

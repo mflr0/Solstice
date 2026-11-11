@@ -33,6 +33,7 @@
   import { appearance, ignoreShortcut, mac, notify, openEdit } from '../../lib/ui.svelte.js';
   import BoardCard from '../board/BoardCard.svelte';
   import BoardHeader from '../board/BoardHeader.svelte';
+  import BoardRail from '../board/BoardRail.svelte';
   import type { MenuGroup } from '../board/CardMenu.svelte';
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
@@ -437,137 +438,138 @@
   {@const d = detail}
   <div class="page board-page" data-title={d.board.name}>
     <BoardHeader detail={d} view="board" />
-
-    {#if d.board.kind === 'scrum' && sprint}
-      <SprintHead title={sprint.name} {sprint} meta={t.boards.cards(shownCount)}>
-        {#snippet actions()}
-          {#if d.can.manage}
-            <button class="btn btn-quiet" onclick={() => (editing = sprint)}
-              >{t.boards.editSprint}</button
-            >
-            <button class="btn" onclick={() => (completing = sprint)}
-              >{t.boards.completeSprint}</button
-            >
-          {/if}
-        {/snippet}
-      </SprintHead>
-    {/if}
-
-    <div class="board-search">
-      <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
-    </div>
-    {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
-    <QuickFilters filters={d.quickFilters} selected={quick} />
-
-    {#if cardsError}
-      <p class="error-text" role="alert">{cardsError}</p>
-    {:else if !cards}
-      <p class="muted loading">{t.common.loading}</p>
-    {:else if d.board.kind === 'scrum' && !sprint}
-      <Illustration kind="empty" />
-      <p class="empty">{t.boards.noActiveSprint} {t.boards.noActiveSprintHint}</p>
-      <p><a class="btn" href={paths.backlog(d.board.id)}>{t.boards.openBacklog}</a></p>
-    {:else}
-      {#if truncated}<p class="notice" role="status">{t.boards.truncated}</p>{/if}
-      {#if cards.length === 0}
-        <p class="empty">{filtered ? t.boards.emptyFiltered : t.boards.emptyBoard}</p>
+    <BoardRail detail={d}>
+      {#if d.board.kind === 'scrum' && sprint}
+        <SprintHead title={sprint.name} {sprint} meta={t.boards.cards(shownCount)}>
+          {#snippet actions()}
+            {#if d.can.manage}
+              <button class="btn btn-quiet" onclick={() => (editing = sprint)}
+                >{t.boards.editSprint}</button
+              >
+              <button class="btn" onclick={() => (completing = sprint)}
+                >{t.boards.completeSprint}</button
+              >
+            {/if}
+          {/snippet}
+        </SprintHead>
       {/if}
-      <div
-        class="board"
-        class:more-left={moreLeft}
-        class:more-right={moreRight}
-        use:hiddenSides={(left, right) => {
-          moreLeft = left;
-          moreRight = right;
-        }}
-        use:touchDrag={touch}
-        style:grid-template-columns="repeat({columns.length}, minmax(min(250px, 78vw), 1fr))"
-        style:grid-template-rows="repeat({rows}, auto)"
-        style:row-gap="0"
-      >
-        <!-- Before the columns, so the toggles don't come after every card in the tab order. -->
-        {#if banded}
-          {#each sections as section, k (section.id)}
-            {@const issue = sectionIssue(section)}
-            <div class="board-section" style:grid-column="1 / -1" style:grid-row={bandRow(k)}>
-              <button
-                type="button"
-                class="board-section-toggle"
-                aria-expanded={!collapsed[section.id]}
-                onclick={() => (collapsed[section.id] = !collapsed[section.id])}
-              >
-                <span class="chevron" aria-hidden="true"></span>
-                {#if issue}
-                  <TypeMark type={issue.type} />
-                  <span class="key">{issue.key}</span>
-                  <span class="board-section-title">{issue.summary}</span>
-                {:else}
-                  <span class="board-section-title">{sectionName(section)}</span>
-                {/if}
-                <span class="board-section-count">{t.boards.cards(section.cards.length)}</span>
-              </button>
-              {#if section.kind === 'parent' && issue}<Stamp status={issue.status} />{/if}
-            </div>
-          {/each}
-        {/if}
-        {#each columns as column, i (column.id)}
-          {@const count = counts[column.id] ?? 0}
-          <section
-            class="board-column"
-            class:is-over={over?.column === column.id}
-            aria-labelledby="col-{column.id}"
-            style:grid-column={i + 1}
-            style:grid-row="1 / span {rows}"
-            style:display="grid"
-            style:grid-template-rows="subgrid"
-          >
-            <header class="board-column-head" style:grid-row="1">
-              <h2 class="board-column-title" id="col-{column.id}">{column.name}</h2>
-              <span class="board-column-count"
-                ><span aria-hidden="true">{count}</span><span class="sr-only"
-                  >{t.boards.cards(count)}</span
-                ></span
-              >
-            </header>
-            {#each sections as section, k (section.id)}
-              {#if banded}<div class="band-gap" style:grid-row={bandRow(k)}></div>{/if}
-              {#if !collapsed[section.id]}
-                {@const list = cell(section, column)}
-                {@const keys = list.map((c) => c.key)}
-                <div
-                  class="board-cards"
-                  style:grid-row={cellRow(k)}
-                  role="list"
-                  data-section={section.id}
-                  data-column={column.id}
-                  aria-label={banded ? `${column.name} — ${sectionName(section)}` : column.name}
-                  ondragover={(e) => dragOver(e, section, column)}
-                  ondragleave={(e) => dragLeave(e, section, column)}
-                  ondrop={(e) => drop(e, section, column)}
-                >
-                  {#each list as card (card.key)}
-                    <BoardCard
-                      {card}
-                      estimate={d.board.estimate}
-                      showStatus={column.statuses.length > 1}
-                      dragging={drag?.key === card.key}
-                      marker={markerOf(section, column, list, card)}
-                      menu={menuFor(card, keys)}
-                      ondragstart={(e, c) => startDrag(e, c, section)}
-                      ondragend={endDrag}
-                    />
-                  {/each}
-                  {#if list.length === 0 && over?.section === section.id && over.column === column.id}
-                    <span class="drop-marker" aria-hidden="true"></span>
-                  {/if}
-                </div>
-              {/if}
-            {/each}
-          </section>
-        {/each}
+
+      <div class="board-search">
+        <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
       </div>
-    {/if}
-    <p class="sr-only" aria-live="polite">{announcement}</p>
+      {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
+      <QuickFilters filters={d.quickFilters} selected={quick} />
+
+      {#if cardsError}
+        <p class="error-text" role="alert">{cardsError}</p>
+      {:else if !cards}
+        <p class="muted loading">{t.common.loading}</p>
+      {:else if d.board.kind === 'scrum' && !sprint}
+        <Illustration kind="empty" />
+        <p class="empty">{t.boards.noActiveSprint} {t.boards.noActiveSprintHint}</p>
+        <p><a class="btn" href={paths.backlog(d.board.id)}>{t.boards.openBacklog}</a></p>
+      {:else}
+        {#if truncated}<p class="notice" role="status">{t.boards.truncated}</p>{/if}
+        {#if cards.length === 0}
+          <p class="empty">{filtered ? t.boards.emptyFiltered : t.boards.emptyBoard}</p>
+        {/if}
+        <div
+          class="board"
+          class:more-left={moreLeft}
+          class:more-right={moreRight}
+          use:hiddenSides={(left, right) => {
+            moreLeft = left;
+            moreRight = right;
+          }}
+          use:touchDrag={touch}
+          style:grid-template-columns="repeat({columns.length}, minmax(min(250px, 78vw), 1fr))"
+          style:grid-template-rows="repeat({rows}, auto)"
+          style:row-gap="0"
+        >
+          <!-- Before the columns, so the toggles don't come after every card in the tab order. -->
+          {#if banded}
+            {#each sections as section, k (section.id)}
+              {@const issue = sectionIssue(section)}
+              <div class="board-section" style:grid-column="1 / -1" style:grid-row={bandRow(k)}>
+                <button
+                  type="button"
+                  class="board-section-toggle"
+                  aria-expanded={!collapsed[section.id]}
+                  onclick={() => (collapsed[section.id] = !collapsed[section.id])}
+                >
+                  <span class="chevron" aria-hidden="true"></span>
+                  {#if issue}
+                    <TypeMark type={issue.type} />
+                    <span class="key">{issue.key}</span>
+                    <span class="board-section-title">{issue.summary}</span>
+                  {:else}
+                    <span class="board-section-title">{sectionName(section)}</span>
+                  {/if}
+                  <span class="board-section-count">{t.boards.cards(section.cards.length)}</span>
+                </button>
+                {#if section.kind === 'parent' && issue}<Stamp status={issue.status} />{/if}
+              </div>
+            {/each}
+          {/if}
+          {#each columns as column, i (column.id)}
+            {@const count = counts[column.id] ?? 0}
+            <section
+              class="board-column"
+              class:is-over={over?.column === column.id}
+              aria-labelledby="col-{column.id}"
+              style:grid-column={i + 1}
+              style:grid-row="1 / span {rows}"
+              style:display="grid"
+              style:grid-template-rows="subgrid"
+            >
+              <header class="board-column-head" style:grid-row="1">
+                <h2 class="board-column-title" id="col-{column.id}">{column.name}</h2>
+                <span class="board-column-count"
+                  ><span aria-hidden="true">{count}</span><span class="sr-only"
+                    >{t.boards.cards(count)}</span
+                  ></span
+                >
+              </header>
+              {#each sections as section, k (section.id)}
+                {#if banded}<div class="band-gap" style:grid-row={bandRow(k)}></div>{/if}
+                {#if !collapsed[section.id]}
+                  {@const list = cell(section, column)}
+                  {@const keys = list.map((c) => c.key)}
+                  <div
+                    class="board-cards"
+                    style:grid-row={cellRow(k)}
+                    role="list"
+                    data-section={section.id}
+                    data-column={column.id}
+                    aria-label={banded ? `${column.name} — ${sectionName(section)}` : column.name}
+                    ondragover={(e) => dragOver(e, section, column)}
+                    ondragleave={(e) => dragLeave(e, section, column)}
+                    ondrop={(e) => drop(e, section, column)}
+                  >
+                    {#each list as card (card.key)}
+                      <BoardCard
+                        {card}
+                        estimate={d.board.estimate}
+                        showStatus={column.statuses.length > 1}
+                        dragging={drag?.key === card.key}
+                        marker={markerOf(section, column, list, card)}
+                        menu={menuFor(card, keys)}
+                        ondragstart={(e, c) => startDrag(e, c, section)}
+                        ondragend={endDrag}
+                      />
+                    {/each}
+                    {#if list.length === 0 && over?.section === section.id && over.column === column.id}
+                      <span class="drop-marker" aria-hidden="true"></span>
+                    {/if}
+                  </div>
+                {/if}
+              {/each}
+            </section>
+          {/each}
+        </div>
+      {/if}
+      <p class="sr-only" aria-live="polite">{announcement}</p>
+    </BoardRail>
   </div>
 
   <CloneDialog

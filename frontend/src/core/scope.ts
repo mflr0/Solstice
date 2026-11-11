@@ -44,10 +44,14 @@ export function scopeBoards(boards: BoardSummary[], key: string | null): BoardSu
 
 /**
  * Where the bare board list goes for the project: its only board, or the
- * list filtered to it. null: it stays.
+ * list filtered to it. null: it stays, as it does when one came to create a board.
  */
-export function boardsLanding(boards: BoardSummary[], key: string | null): string | null {
-  if (!key) return null;
+export function boardsLanding(
+  boards: BoardSummary[],
+  key: string | null,
+  creating = false,
+): string | null {
+  if (!key || creating) return null;
   const mine = scopeBoards(boards, key);
   return mine.length === 1 ? paths.board(mine[0]!.id) : paths.boards(key);
 }
@@ -82,6 +86,36 @@ export function onProjects(route: Route): boolean {
 export function boardProject(projects: { key: string }[], key: string | null): string | null {
   if (key && projects.some((p) => p.key === key)) return key;
   return projects[0]?.key ?? null;
+}
+
+/** A project and its boards, in a board page's rail. */
+export interface RailProject {
+  key: string;
+  name: string;
+  boards: BoardSummary[];
+}
+
+/**
+ * What a board page's rail lists: the boards of the project, then every other
+ * project by key, with its boards. A board in several projects is under each.
+ */
+export function boardRail(
+  boards: BoardSummary[],
+  key: string | null,
+): { current: BoardSummary[]; others: RailProject[] } {
+  const others = new Map<string, RailProject>();
+  for (const b of boards) {
+    for (const p of b.projects) {
+      if (p.key === key) continue;
+      let group = others.get(p.key);
+      if (!group) others.set(p.key, (group = { key: p.key, name: p.name, boards: [] }));
+      group.boards.push(b);
+    }
+  }
+  return {
+    current: key ? scopeBoards(boards, key) : [],
+    others: [...others.values()].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)),
+  };
 }
 
 /** Where a board's way back to the list goes: the list of the project it stands for. */

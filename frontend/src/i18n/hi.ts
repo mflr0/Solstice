@@ -1139,6 +1139,13 @@ export const hi: Messages = {
     notAdmin: 'इस प्रोजेक्ट के लिए बोर्ड सिर्फ़ इसके एडमिन बना सकते हैं।',
     noProject: 'आपके पास किसी प्रोजेक्ट की पहुँच नहीं है।',
 
+    rail: 'बोर्ड बदलें',
+    railCollapse: 'बोर्ड सूची समेटें',
+    railExpand: 'बोर्ड सूची फैलाएँ',
+    allBoards: 'सभी बोर्ड',
+    newBoard: 'नया बोर्ड',
+    otherProjects: 'अन्य प्रोजेक्ट',
+
     views: 'व्यू',
     viewBoard: 'बोर्ड',
     viewBacklog: 'बैकलॉग',

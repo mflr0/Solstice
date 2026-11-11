@@ -1157,6 +1157,13 @@ export const de: Messages = {
     notAdmin: 'Nur die Administratoren dieses Projekts können ein Board dafür erstellen.',
     noProject: 'Sie haben auf kein Projekt Zugriff.',
 
+    rail: 'Board wechseln',
+    railCollapse: 'Boardliste einklappen',
+    railExpand: 'Boardliste ausklappen',
+    allBoards: 'Alle Boards',
+    newBoard: 'Neues Board',
+    otherProjects: 'Andere Projekte',
+
     views: 'Ansicht',
     viewBoard: 'Board',
     viewBacklog: 'Backlog',

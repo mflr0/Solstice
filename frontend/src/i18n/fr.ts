@@ -1146,6 +1146,13 @@ export const fr: Messages = {
     notAdmin: 'Seuls les administrateurs de ce projet peuvent lui créer un tableau.',
     noProject: 'Aucun projet ne vous est accessible.',
 
+    rail: 'Changer de tableau',
+    railCollapse: 'Replier la liste des tableaux',
+    railExpand: 'Déplier la liste des tableaux',
+    allBoards: 'Tous les tableaux',
+    newBoard: 'Nouveau tableau',
+    otherProjects: 'Autres projets',
+
     views: 'Vue',
     viewBoard: 'Tableau',
     viewBacklog: 'Backlog',
