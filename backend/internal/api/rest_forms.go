@@ -63,7 +63,7 @@ func (s *Server) newFormBuilder(r *http.Request, sub *perm.Subject) (*formBuilde
 	if err != nil {
 		return nil, err
 	}
-	customs, err := s.customFields(r.Context())
+	customs, err := s.restCustomFields(r.Context())
 	if err != nil {
 		return nil, err
 	}

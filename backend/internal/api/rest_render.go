@@ -132,13 +132,21 @@ func (sel *fieldSelection) hasSystem(id string) bool {
 	return sel.has(id, f.navigable)
 }
 
+// hasCustom tells whether a custom field is selected, by id or by name.
+func (sel *fieldSelection) hasCustom(f customFieldDef) bool {
+	if sel.exclude[f.Name] {
+		return false
+	}
+	return sel.has(customID(f.ID), true) || sel.include[f.Name]
+}
+
 func customID(id int64) string { return "customfield_" + strconv.FormatInt(id, 10) }
 
 // loads tells loadIssues what the selected fields need.
 func (sel *fieldSelection) loads(defs []customFieldDef) func(string) bool {
 	custom, epic, sprint := false, false, false
 	for _, f := range defs {
-		if sel.has(customID(f.ID), true) {
+		if sel.hasCustom(f) {
 			custom = true
 			epic = epic || f.Kind == issue.KindEpicLink
 			sprint = sprint || f.Kind == issue.KindSprint
@@ -287,7 +295,7 @@ func (s *Server) jiraIssue(o *restOut, cat *catalog, set *issueSet, users map[in
 	})
 	for _, cf := range set.fields {
 		id := customID(cf.ID)
-		if sel.has(id, true) {
+		if sel.hasCustom(cf) {
 			f[id] = o.customValue(set, users, cf, d)
 		}
 	}
@@ -530,7 +538,7 @@ func (o *restOut) fieldNames(set *issueSet, sel *fieldSelection) map[string]stri
 		}
 	}
 	for _, f := range set.fields {
-		if sel.has(customID(f.ID), true) {
+		if sel.hasCustom(f) {
 			out[customID(f.ID)] = f.Name
 		}
 	}
@@ -635,7 +643,7 @@ func (s *Server) jiraIssues(ctx context.Context, o *restOut, sub *perm.Subject, 
 	if err != nil {
 		return nil, nil, err
 	}
-	custom, err := s.customFields(ctx)
+	custom, err := s.restCustomFields(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

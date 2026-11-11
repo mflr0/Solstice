@@ -406,7 +406,7 @@ func (s *Server) restResolutions(w http.ResponseWriter, r *http.Request) error {
 
 // restFields lists the system fields Solstice keeps and every custom field.
 func (s *Server) restFields(w http.ResponseWriter, r *http.Request) error {
-	fields, err := s.customFields(r.Context())
+	fields, err := s.restCustomFields(r.Context())
 	if err != nil {
 		return err
 	}
@@ -421,9 +421,12 @@ func (s *Server) restFields(w http.ResponseWriter, r *http.Request) error {
 		out = append(out, jf)
 	}
 	for _, f := range fields {
+		clauses := []string{"cf[" + strconv.FormatInt(f.ID, 10) + "]", f.Name}
+		if f.ID == epicLinkFieldID {
+			clauses = clauses[1:]
+		}
 		out = append(out, map[string]any{"id": customID(f.ID), "name": f.Name, "custom": true, "orderable": true,
-			"navigable": true, "searchable": true, "schema": customFieldSchema(f),
-			"clauseNames": []string{"cf[" + strconv.FormatInt(f.ID, 10) + "]", f.Name}})
+			"navigable": true, "searchable": true, "schema": customFieldSchema(f), "clauseNames": clauses})
 	}
 	return writeJSON(w, http.StatusOK, out)
 }

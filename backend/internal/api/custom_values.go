@@ -431,6 +431,6 @@ func (s *Server) editProjectOf(ctx context.Context, projectID int64) (*editProje
 		return nil, err
 	}
 	var err error
-	p.customs, err = s.customFields(ctx)
+	p.customs, err = s.restCustomFields(ctx)
 	return p, err
 }

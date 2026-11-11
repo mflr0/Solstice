@@ -166,17 +166,32 @@ var editableFields = map[string]string{
 // translateEdit turns Jira's fields and update operations into a jiraEdit.
 // cur is the issue being edited (with its labels, components, versions),
 // nil for a creation.
+// fieldKey gives the id of a field a request names: a custom field may be
+// named by its name, ignoring case, unless a system field has that id.
+func (p *editProject) fieldKey(name string) string {
+	if _, ok := systemField(name); ok {
+		return name
+	}
+	for _, cf := range p.customs {
+		if strings.EqualFold(cf.Name, name) {
+			return customID(cf.ID)
+		}
+	}
+	return name
+}
+
 func (s *Server) translateEdit(ctx context.Context, sub *perm.Subject, cat *catalog, p *editProject, cur *issueData,
 	in jiraEditInput) (*jiraEdit, error) {
 	edit := &jiraEdit{ui: fields{}}
 	values := map[string]json.RawMessage{}
 	for k, v := range in.Fields {
-		values[k] = v
+		values[p.fieldKey(k)] = v
 	}
 	// Update operations: set replaces, add and remove change a list, and
 	// comment.add adds a comment.
-	for _, field := range slices.Sorted(maps.Keys(in.Update)) {
-		for _, op := range in.Update[field] {
+	for _, name := range slices.Sorted(maps.Keys(in.Update)) {
+		field := p.fieldKey(name)
+		for _, op := range in.Update[name] {
 			for _, verb := range slices.Sorted(maps.Keys(op)) {
 				arg := op[verb]
 				switch {
