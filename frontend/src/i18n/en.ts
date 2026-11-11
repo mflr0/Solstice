@@ -1481,6 +1481,8 @@ export const en = {
     delete: 'Delete',
     newWorkflow: 'New workflow',
     copyFrom: 'Start from a copy of',
+    copyFromProject: 'This project',
+    copyFromGlobal: 'Global workflows',
     newName: 'Workflow name',
     create: 'Create',
     created: (name: string) => `Workflow “${name}” created.`,

@@ -163,6 +163,86 @@ func TestProjectWorkflowFromGlobal(t *testing.T) {
 	}
 }
 
+// A project administrator adds a copy of a global workflow next to the
+// project's own; later edits of the global workflow leave it alone. Only
+// the project's administrators get the global list.
+func TestProjectWorkflowCopyOfGlobal(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	paul := login(t, "paul.martin", jirafixture.Password)     // the lead, not a global admin
+	jeanne := login(t, "jeanne.dupont", jirafixture.Password) // a developer
+	lead := dbInt(t, `SELECT id FROM users WHERE username = 'paul.martin'`)
+	key := newProject(t, admin, map[string]any{"lead": lead})
+
+	var own struct{ ID int64 }
+	tag := fmt.Sprintf("check903-%d", time.Now().UnixNano())
+	admin.call("POST", "/api/admin/workflows", map[string]any{"name": tag}, 201, &own)
+	path := fmt.Sprintf("/api/admin/workflows/%d", own.ID)
+	t.Cleanup(func() { admin.do("DELETE", path, nil) })
+	var list []globalWorkflow
+	admin.call("GET", "/api/admin/workflows", nil, 200, &list)
+	global := *globalWorkflowByID(list, own.ID)
+
+	type brief struct {
+		ID   int64
+		Name string
+	}
+	type listing struct {
+		Workflows       []globalWorkflow
+		GlobalWorkflows *[]brief
+	}
+	var got listing
+	paul.call("GET", "/api/projects/"+key+"/workflows", nil, 200, &got)
+	if got.GlobalWorkflows == nil || len(*got.GlobalWorkflows) != len(list) ||
+		!slices.Contains(*got.GlobalWorkflows, brief{own.ID, tag}) {
+		t.Errorf("global workflows for the lead: %+v, want %d with %s", got.GlobalWorkflows, len(list), tag)
+	}
+	var plain listing
+	jeanne.call("GET", "/api/projects/"+key+"/workflows", nil, 200, &plain)
+	if plain.GlobalWorkflows != nil {
+		t.Errorf("a developer got the global workflows: %+v", *plain.GlobalWorkflows)
+	}
+	jeanne.call("POST", "/api/projects/"+key+"/workflows", map[string]any{"name": tag, "copyFrom": own.ID}, 403, nil)
+
+	var created struct{ ID int64 }
+	paul.call("POST", "/api/projects/"+key+"/workflows", map[string]any{"name": "Copy " + tag, "copyFrom": own.ID},
+		201, &created)
+	copyOf := func() globalWorkflow {
+		t.Helper()
+		var out listing
+		paul.call("GET", "/api/projects/"+key+"/workflows", nil, 200, &out)
+		for _, w := range out.Workflows {
+			if w.ID == created.ID {
+				return w
+			}
+		}
+		t.Fatalf("copy %d not in %+v", created.ID, out.Workflows)
+		return globalWorkflow{}
+	}
+	before := copyOf()
+	if before.Name != "Copy "+tag || before.Default || workflowShape(before) != workflowShape(global) {
+		t.Errorf("copy: %+v, want the shape of %+v", before, global)
+	}
+	var details struct{ CopyFrom int64 }
+	if d := auditDetails(t, "workflow.create", strconv.FormatInt(created.ID, 10)); json.Unmarshal([]byte(d), &details) != nil ||
+		details.CopyFrom != own.ID {
+		t.Errorf("audit of the copy: %s", d)
+	}
+
+	body := global.put()
+	body["transitions"] = body["transitions"].([]map[string]any)[1:]
+	admin.call("PUT", path, body, 200, nil)
+	if after := copyOf(); workflowShape(after) != workflowShape(before) {
+		t.Errorf("after editing the global workflow, the copy is\n%s\nwas\n%s", workflowShape(after),
+			workflowShape(before))
+	}
+
+	other := dbInt(t, `SELECT w.id FROM workflows w JOIN projects p ON p.id = w.project_id WHERE p.pkey <> ?
+		ORDER BY w.id LIMIT 1`, key)
+	for _, from := range []int64{other, -1, 1 << 40} {
+		paul.call("POST", "/api/projects/"+key+"/workflows", map[string]any{"name": tag, "copyFrom": from}, 400, nil)
+	}
+}
+
 // newProject creates a project led by admin, open to the developpeurs group,
 // and deletes it when the test ends.
 func newProject(t *testing.T, admin *client, extra map[string]any) string {

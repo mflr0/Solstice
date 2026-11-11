@@ -1,7 +1,7 @@
 <script lang="ts">
   import { paths } from '../../core/route.js';
   import type { ProjectWorkflows, StrandedDefault, Workflow } from '../../core/types.js';
-  import { strandedDefaultOf, suggestDefaultRemap } from '../../core/workflow.js';
+  import { copySources, strandedDefaultOf, suggestDefaultRemap } from '../../core/workflow.js';
   import { t } from '../../i18n/t.js';
   import { api, ApiError, errorMessage } from '../../lib/api.js';
   import { router } from '../../lib/router.svelte.js';
@@ -201,10 +201,13 @@
       <Dropdown
         label={t.workflows.copyFrom}
         value={copyFrom}
-        options={(data?.workflows ?? []).map((w) => ({
-          value: String(w.id),
-          label: `${w.name}${w.default ? ` (${t.workflows.defaultBadge})` : ''}`,
-        }))}
+        options={data
+          ? copySources(data, {
+              project: t.workflows.copyFromProject,
+              global: t.workflows.copyFromGlobal,
+              defaultBadge: t.workflows.defaultBadge,
+            })
+          : []}
         onchange={(v) => (copyFrom = v)}
       />
     </div>

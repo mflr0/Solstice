@@ -439,6 +439,8 @@ export interface ProjectWorkflows {
   /** The whole status catalogue, shared by every project. */
   statuses: StatusRef[];
   can: { edit: boolean };
+  /** The global workflows a copy can start from; only for the project's administrators. */
+  globalWorkflows?: { id: number; name: string }[];
 }
 
 /** What saving a workflow sends. */

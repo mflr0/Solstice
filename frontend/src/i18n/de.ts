@@ -1511,6 +1511,8 @@ export const de: Messages = {
     delete: 'Löschen',
     newWorkflow: 'Neuer Workflow',
     copyFrom: 'Als Kopie von',
+    copyFromProject: 'Dieses Projekt',
+    copyFromGlobal: 'Globale Workflows',
     newName: 'Name des Workflows',
     create: 'Erstellen',
     created: (name: string) => `Workflow „${name}“ erstellt.`,

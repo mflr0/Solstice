@@ -295,6 +295,32 @@ export function globalWorkflowsData(
   };
 }
 
+/** A workflow a new one can copy, under the heading of where it comes from. */
+export interface CopySource {
+  value: string;
+  label: string;
+  group: string;
+}
+
+/** What a project's new workflow can copy: the project's own, then the global ones. */
+export function copySources(
+  data: ProjectWorkflows,
+  labels: { project: string; global: string; defaultBadge: string },
+): CopySource[] {
+  return [
+    ...data.workflows.map((w) => ({
+      value: String(w.id),
+      label: w.default ? `${w.name} (${labels.defaultBadge})` : w.name,
+      group: labels.project,
+    })),
+    ...(data.globalWorkflows ?? []).map((w) => ({
+      value: String(w.id),
+      label: w.name,
+      group: labels.global,
+    })),
+  ];
+}
+
 /** Whether a global workflow may be deleted: never the default, which also keeps the last one. */
 export function canDeleteGlobal(w: GlobalWorkflow, list: GlobalWorkflow[]): boolean {
   return !w.default && list.length > 1;

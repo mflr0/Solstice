@@ -208,10 +208,37 @@ func (s *Server) writeWorkflows(w http.ResponseWriter, r *http.Request, sub *per
 	if err != nil {
 		return err
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"workflows": list, "issueTypes": types, "statuses": cat.Statuses,
 		"can": map[string]bool{"edit": sub.Administers(projectID)},
+	}
+	if sub.Administers(projectID) {
+		if out["globalWorkflows"], err = s.globalWorkflowNames(ctx); err != nil {
+			return err
+		}
+	}
+	return writeJSON(w, http.StatusOK, out)
+}
+
+type workflowBrief struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// globalWorkflowNames lists the global workflows a project can copy, the
+// default first.
+func (s *Server) globalWorkflowNames(ctx context.Context) ([]workflowBrief, error) {
+	out := []workflowBrief{}
+	err := sqlq.Each(ctx, s.db, `SELECT id, name FROM workflows WHERE project_id IS NULL
+		ORDER BY is_default DESC, name, id`, func(rows *sql.Rows) error {
+		var w workflowBrief
+		if err := rows.Scan(&w.ID, &w.Name); err != nil {
+			return err
+		}
+		out = append(out, w)
+		return nil
 	})
+	return out, err
 }
 
 // workflowForEdit loads a project's workflow the user administers. Global
@@ -701,7 +728,7 @@ func (s *Server) updateWorkflow(w http.ResponseWriter, r *http.Request) error {
 }
 
 // createWorkflow adds a workflow to a project, a copy of another of its
-// workflows (by default the default one).
+// workflows (by default the default one) or of a global workflow.
 func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	sub, projectID, err := s.browsableProject(r)
@@ -722,18 +749,29 @@ func (s *Server) createWorkflow(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		return fail(http.StatusBadRequest, i18n.WorkflowNameRequired)
 	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// The share lock keeps the source from changing or going while it is
+	// copied.
 	var source int64
 	var initial string
-	err = s.db.QueryRowContext(ctx, `SELECT id, initial_status_id FROM workflows WHERE project_id = ?
-		AND (id = ? OR (? = 0 AND is_default)) LIMIT 1`, projectID, in.CopyFrom, in.CopyFrom).Scan(&source, &initial)
+	err = tx.QueryRowContext(ctx, `SELECT id, initial_status_id FROM workflows
+		WHERE (project_id = ? AND (id = ? OR (? = 0 AND is_default))) OR (project_id IS NULL AND id = ?)
+		LIMIT 1 LOCK IN SHARE MODE`, projectID, in.CopyFrom, in.CopyFrom, in.CopyFrom).Scan(&source, &initial)
 	if errors.Is(err, sql.ErrNoRows) {
 		return fail(http.StatusBadRequest, i18n.WorkflowCopyNotFound)
 	}
 	if err != nil {
 		return err
 	}
-	id, err := s.copyWorkflow(ctx, projectID, name, initial, source)
+	id, err := copyWorkflowTx(ctx, tx, projectID, name, false, initial, source)
 	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
 		return err
 	}
 	s.auditWorkflow(r, audit.WorkflowCreate, id, projectID, name, map[string]any{"copyFrom": in.CopyFrom})
