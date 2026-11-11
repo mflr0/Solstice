@@ -35,9 +35,9 @@ export const de: Messages = {
   },
 
   categories: {
-    todo: 'Zu erledigen',
-    doing: 'In Arbeit',
-    done: 'Erledigt',
+    todo: 'Nicht begonnen',
+    doing: 'Begonnen',
+    done: 'Abgeschlossen',
   },
 
   permissions: {
@@ -617,7 +617,7 @@ export const de: Messages = {
       membersOf: (group: string) => `Mitglieder von ${group}`,
     },
     shortcuts: 'Schnellauswahl',
-    categoryOnly: (name: string) => `Kategorie: ${name}`,
+    categoryOnly: (name: string) => `Phase: ${name}`,
     released: 'veröffentlicht',
     datePresets: {
       today: 'Heute',
@@ -675,7 +675,7 @@ export const de: Messages = {
       project: 'Projekt',
       type: 'Vorgangstyp',
       status: 'Status',
-      statusCategory: 'Statuskategorie',
+      statusCategory: 'Statusphase',
       assignee: 'Bearbeiter',
       reporter: 'Melder',
       creator: 'Ersteller',
@@ -1551,7 +1551,7 @@ export const de: Messages = {
     searchStatus: 'Status suchen oder erstellen',
     noMatch: 'Kein anderer Status passt.',
     createStatus: (name: string) => `„${name}“ erstellen als:`,
-    createAs: 'Kategorie des neuen Status',
+    createAs: 'Phase des neuen Status',
     sharedStatuses: 'Status gelten für alle Projekte, ebenso ihre Namen.',
     diagram: 'Diagramm',
     diagramLabel: (statuses: number, transitions: number) =>
@@ -3366,12 +3366,13 @@ export const de: Messages = {
 
   statusesAdmin: {
     intro:
-      'Die Status, die ein Vorgang durchläuft, für alle Projekte gemeinsam. Die Kategorie sagt Boards und Berichten, ob die Arbeit zu erledigen, in Arbeit oder erledigt ist.',
+      'Die Status, die ein Vorgang durchläuft, für alle Projekte gemeinsam. Die Phase eines Status legt fest, ob seine Vorgänge als nicht begonnen, begonnen oder abgeschlossen gelten. Die Spalten legt jedes Board selbst fest.',
     newItem: 'Neuer Status',
     namePlaceholder: 'In Prüfung, blockiert…',
     search: 'Status suchen',
-    category: 'Kategorie',
-    categoryHint: 'Boards und Berichte richten sich nach der Kategorie, egal wie der Status heißt.',
+    category: 'Phase',
+    categoryHint:
+      'Legt fest, ob Vorgänge in diesem Status als nicht begonnen, begonnen oder abgeschlossen gelten: Lösung, Backlog, Sprints, Fälligkeitserinnerungen und Suche. Die Spalten legt jedes Board selbst fest.',
     empty: 'Kein Status',
     emptyHint: 'Status erscheinen, sobald ein Workflow sie verwendet.',
     workflows: (n: number) => plural(n, 'Workflow', 'Workflows'),

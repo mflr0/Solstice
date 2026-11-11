@@ -263,14 +263,22 @@ const CATEGORY_NAMES: Record<string, StatusCategory> = {
   new: 'todo',
   'à faire': 'todo',
   'a faire': 'todo',
+  'not started': 'todo',
+  'pas commencé': 'todo',
+  'pas commence': 'todo',
   'in progress': 'doing',
   indeterminate: 'doing',
   doing: 'doing',
   'en cours': 'doing',
+  started: 'doing',
+  commencé: 'doing',
+  commence: 'doing',
   done: 'done',
   complete: 'done',
   terminé: 'done',
   termine: 'done',
+  finished: 'done',
+  fini: 'done',
 };
 
 /** A list clause's values, or null when the filters cannot hold it. */

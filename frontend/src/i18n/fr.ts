@@ -33,9 +33,9 @@ export const fr: Messages = {
   },
 
   categories: {
-    todo: 'À faire',
-    doing: 'En cours',
-    done: 'Terminé',
+    todo: 'Pas commencé',
+    doing: 'Commencé',
+    done: 'Fini',
   },
 
   /** What each permission allows, for the project settings page. */
@@ -608,7 +608,7 @@ export const fr: Messages = {
       membersOf: (group: string) => `Membres de ${group}`,
     },
     shortcuts: 'Raccourcis',
-    categoryOnly: (name: string) => `catégorie ${name}`,
+    categoryOnly: (name: string) => `étape ${name}`,
     released: 'livrée',
     datePresets: {
       today: 'Aujourd’hui',
@@ -666,7 +666,7 @@ export const fr: Messages = {
       project: 'projet',
       type: 'type de ticket',
       status: 'statut',
-      statusCategory: 'catégorie de statut',
+      statusCategory: 'étape de statut',
       assignee: 'assigné',
       reporter: 'rapporteur',
       creator: 'créateur',
@@ -1538,7 +1538,7 @@ export const fr: Messages = {
     searchStatus: 'Chercher ou créer un statut',
     noMatch: 'Aucun autre statut ne correspond.',
     createStatus: (name: string) => `Créer « ${name} » :`,
-    createAs: 'Catégorie du nouveau statut',
+    createAs: 'Étape du nouveau statut',
     sharedStatuses: 'Les statuts sont communs à tous les projets ; leur nom se partage.',
     diagram: 'Schéma',
     diagramLabel: (statuses: number, transitions: number) =>
@@ -3342,13 +3342,13 @@ export const fr: Messages = {
 
   statusesAdmin: {
     intro:
-      'Les statuts par lesquels passe un ticket, communs à tous les projets. La catégorie indique aux tableaux et aux rapports si le travail est à faire, en cours ou terminé.',
+      'Les statuts par lesquels passe un ticket, communs à tous les projets. L’étape d’un statut indique si ses tickets comptent comme pas commencés, commencés ou finis. Les colonnes se règlent dans chaque tableau.',
     newItem: 'Nouveau statut',
     namePlaceholder: 'En relecture, bloqué…',
     search: 'Rechercher un statut',
-    category: 'Catégorie',
+    category: 'Étape',
     categoryHint:
-      'Les tableaux et les rapports s’appuient sur la catégorie, quel que soit le nom du statut.',
+      'Indique si les tickets de ce statut comptent comme pas commencés, commencés ou finis : résolution, backlog, sprints, rappels d’échéance et recherche. Les colonnes se règlent dans chaque tableau.',
     empty: 'Aucun statut',
     emptyHint: 'Les statuts apparaissent quand un workflow les utilise.',
     workflows: (n: number) => plural(n, 'workflow', 'workflows'),

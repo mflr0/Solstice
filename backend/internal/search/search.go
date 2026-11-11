@@ -60,9 +60,11 @@ var prefixes = map[string]Field{
 var categories = map[string][]issue.StatusCategory{
 	"ouvert": {issue.Todo, issue.Doing}, "open": {issue.Todo, issue.Doing},
 	"à-faire": {issue.Todo}, "a-faire": {issue.Todo}, "todo": {issue.Todo},
+	"not-started": {issue.Todo}, "pas-commencé": {issue.Todo}, "pas-commence": {issue.Todo},
 	"en-cours": {issue.Doing}, "doing": {issue.Doing},
+	"started": {issue.Doing}, "commencé": {issue.Doing}, "commence": {issue.Doing},
 	"fini": {issue.Done}, "fermé": {issue.Done}, "ferme": {issue.Done}, "résolu": {issue.Done}, "resolu": {issue.Done},
-	"done": {issue.Done}, "closed": {issue.Done}, "resolved": {issue.Done},
+	"done": {issue.Done}, "finished": {issue.Done}, "closed": {issue.Done}, "resolved": {issue.Done},
 }
 
 // Sort orders: SQL on the issues alias i, projects alias p, priorities alias pr.

@@ -441,7 +441,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	StatusNameUnknown:        "अज्ञात स्टेटस: %s।",
 	StatusNameRequired:       "स्टेटस का नाम होना चाहिए।",
 	StatusNameTaken:          "“%s” नाम का एक और स्टेटस पहले से मौजूद है।",
-	StatusCategoryInvalid:    "श्रेणी: todo, doing या done।",
+	StatusCategoryInvalid:    "चरण: todo, doing या done।",
 	StatusInUse:              "यह स्टेटस अभी इस्तेमाल में है। पहले इसे वर्कफ़्लो और बोर्ड से हटाएँ, और इसके टिकट कहीं और ले जाएँ।",
 	StatusCategoryToDo:       "करना है",
 	StatusCategoryInProgress: "प्रगति में",

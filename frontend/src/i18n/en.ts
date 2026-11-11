@@ -34,9 +34,9 @@ export const en = {
   },
 
   categories: {
-    todo: 'To do',
-    doing: 'In progress',
-    done: 'Done',
+    todo: 'Not started',
+    doing: 'Started',
+    done: 'Finished',
   },
 
   permissions: {
@@ -603,7 +603,7 @@ export const en = {
       membersOf: (group: string) => `Members of ${group}`,
     },
     shortcuts: 'Shortcuts',
-    categoryOnly: (name: string) => `category: ${name}`,
+    categoryOnly: (name: string) => `stage: ${name}`,
     released: 'released',
     datePresets: {
       today: 'Today',
@@ -660,7 +660,7 @@ export const en = {
       project: 'project',
       type: 'issue type',
       status: 'status',
-      statusCategory: 'status category',
+      statusCategory: 'status stage',
       assignee: 'assignee',
       reporter: 'reporter',
       creator: 'creator',
@@ -1520,7 +1520,7 @@ export const en = {
     searchStatus: 'Find or create a status',
     noMatch: 'No other status matches.',
     createStatus: (name: string) => `Create “${name}” as:`,
-    createAs: 'Category of the new status',
+    createAs: 'Stage of the new status',
     sharedStatuses: 'Statuses are common to all projects, and so are their names.',
     diagram: 'Diagram',
     diagramLabel: (statuses: number, transitions: number) =>
@@ -3305,12 +3305,13 @@ export const en = {
 
   statusesAdmin: {
     intro:
-      'The statuses an issue moves through, shared by every project. The category tells boards and reports whether the work is to do, in progress or done.',
+      'The statuses an issue moves through, shared by every project. A status’s stage says whether its issues count as not started, started or finished. Board columns are set per board.',
     newItem: 'New status',
     namePlaceholder: 'In review, blocked…',
     search: 'Search statuses',
-    category: 'Category',
-    categoryHint: 'Boards and reports use the category, whatever the status is called.',
+    category: 'Stage',
+    categoryHint:
+      'Decides whether issues in this status count as not started, started or finished: resolution, backlog, sprints, due-date reminders and search. Board columns are set per board.',
     empty: 'No status',
     emptyHint: 'Statuses appear when a workflow uses them.',
     workflows: (n: number) => plural(n, 'workflow', 'workflows'),
