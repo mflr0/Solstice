@@ -586,6 +586,8 @@ export const it: Messages = {
     close: 'Chiudi',
     reset: 'Cancella',
     andMore: (n: number) => `+${n}`,
+    quickFilters: 'Filtri rapidi',
+    moreAssignees: 'Altri assegnatari',
     special: {
       me: 'Io',
       unassigned: 'Non assegnato',

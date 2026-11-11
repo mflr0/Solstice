@@ -592,6 +592,8 @@ export const de: Messages = {
     close: 'Schließen',
     reset: 'Zurücksetzen',
     andMore: (n: number) => `+${n}`,
+    quickFilters: 'Schnellfilter',
+    moreAssignees: 'Weitere Bearbeiter',
     special: {
       me: 'Ich',
       unassigned: 'Nicht zugewiesen',

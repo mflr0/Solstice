@@ -577,6 +577,8 @@ export const hi: Messages = {
     close: 'बंद करें',
     reset: 'साफ़ करें',
     andMore: (n: number) => `+${n}`,
+    quickFilters: 'त्वरित फ़िल्टर',
+    moreAssignees: 'अन्य असाइनी',
     special: {
       me: 'मैं',
       unassigned: 'असाइन नहीं',

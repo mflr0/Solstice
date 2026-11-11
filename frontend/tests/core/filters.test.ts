@@ -11,15 +11,20 @@ import {
   emptyFilters,
   facetJql,
   filtersToJql,
+  hasAssignee,
   isBlank,
   jqlToFilters,
   listClause,
   literal,
   matchPreset,
+  quickUsers,
   rangeDays,
   readSort,
   sortBy,
   toggle,
+  toggleAssignee,
+  withCategories,
+  withValues,
   type FilterState,
 } from '../../src/core/filters.js';
 import { simpleToJql } from '../../src/core/jql-simple.js';
@@ -471,5 +476,72 @@ describe('simpleToJql', () => {
     for (const q of ['@moi est:ouvert tri:priorité', 'projet:DEMO est:ouvert', '#urgent']) {
       expect(jqlToFilters(simpleToJql(q)).ok, q).toBe(true);
     }
+  });
+});
+
+describe('quick filters', () => {
+  const users = {
+    '1': { id: 1, username: 'zed', name: 'Zed' },
+    '2': { id: 2, username: 'bob', name: 'Bob' },
+    '3': { id: 3, username: 'carol', name: 'Carol' },
+    '4': { id: 4, username: 'dan', name: 'Dan' },
+    '5': { id: 5, username: 'eve', name: 'Eve' },
+    '6': { id: 6, username: 'frank', name: 'Frank' },
+    '7': { id: 7, username: 'gina', name: 'Gina' },
+  };
+  const me = { id: 9, name: 'Me Myself' };
+
+  it('puts oneself first, then by count, ties by name, at most 6', () => {
+    const counts = { '': 8, '1': 2, '2': 5, '3': 2, '4': 1, '5': 3, '6': 1, '7': 1 };
+    const r = quickUsers(counts, users, me);
+    expect(r.users.map((u) => u.name)).toEqual(['Me Myself', 'Bob', 'Eve', 'Carol', 'Zed', 'Dan']);
+    expect(r.users[0]).toEqual({ id: 9, name: 'Me Myself', value: 'currentUser()', count: 0 });
+    expect(r.users[1]?.value).toBe('bob');
+    expect(r.more).toBe(2);
+  });
+
+  it('counts oneself once, from the counts', () => {
+    const r = quickUsers(
+      { '9': 4, '1': 6 },
+      { ...users, '9': { id: 9, username: 'me', name: 'Me' } },
+      me,
+    );
+    expect(r.users.map((u) => [u.name, u.count])).toEqual([
+      ['Me Myself', 4],
+      ['Zed', 6],
+    ]);
+    expect(r.more).toBe(0);
+  });
+
+  it('keeps a chosen assignee with no issue left', () => {
+    const r = quickUsers({ '2': 1 }, users, me, ['zed']);
+    expect(r.users.map((u) => [u.name, u.count])).toEqual([
+      ['Me Myself', 0],
+      ['Bob', 1],
+      ['Zed', 0],
+    ]);
+  });
+
+  it('shows only the others when signed out', () => {
+    expect(quickUsers({ '1': 1 }, users, null).users.map((u) => u.value)).toEqual(['zed']);
+  });
+
+  it('a pressed avatar is the assignee filter', () => {
+    const pressed = toggleAssignee(toggleAssignee(emptyFilters(), 'currentUser()'), 'bob');
+    expect(pressed).toEqual(state({ values: { assignee: ['currentUser()', 'bob'] } }));
+    expect(filtersToJql(pressed)).toBe('assignee in (currentUser(), bob)');
+    const typed = read('assignee in (currentUser(), "Bob")');
+    expect(hasAssignee(typed, 'currentUser()')).toBe(true);
+    expect(hasAssignee(typed, 'bob')).toBe(true);
+    expect(hasAssignee(typed, 'alice')).toBe(false);
+    expect(toggleAssignee(read('assignee = currentUser()'), 'currentUser()')).toEqual(
+      emptyFilters(),
+    );
+  });
+
+  it('a status replaces the categories, and back', () => {
+    const open = withCategories(state({ values: { status: ['Done'] } }), ['todo', 'doing']);
+    expect(open.values.status).toBeUndefined();
+    expect(withValues(open, 'status', ['Done']).categories).toEqual([]);
   });
 });
