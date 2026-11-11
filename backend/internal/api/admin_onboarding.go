@@ -9,7 +9,6 @@ import (
 
 	"solstice/internal/audit"
 	"solstice/internal/i18n"
-	"solstice/internal/mail"
 )
 
 const onboardingDismissed = "onboarding.dismissed"
@@ -34,7 +33,7 @@ func (s *Server) getOnboarding(w http.ResponseWriter, r *http.Request) error {
 		EXISTS(SELECT 1 FROM issues)`, currentUser(r).ID).Scan(&o.Projects, &o.OtherUsers, &o.Boards, &o.Issues); err != nil {
 		return err
 	}
-	cfg, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
+	cfg, err := s.mailConfig(ctx)
 	o.Mail = err == nil && cfg.Enabled
 	if _, err := s.out.settings.GetJSON(ctx, onboardingDismissed, &o.Dismissed); err != nil {
 		return err

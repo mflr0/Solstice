@@ -248,6 +248,14 @@ Les durées s'écrivent `30s`, `5m`, `1h30m`.
 | `SOLSTICE_OIDC_REQUIREGROUP` | aucun | Seuls les membres de ce groupe peuvent se connecter par le fournisseur. |
 | `SOLSTICE_OIDC_ADMINGROUP` | aucun | Les membres de ce groupe sont administrateurs, et eux seuls, parmi les comptes qui se connectent par le fournisseur. |
 | `SOLSTICE_OIDC_TIMEOUT` | `10s` | Temps qu'une connexion peut attendre le fournisseur. Doit être positif. |
+| `SOLSTICE_MAIL_ENABLED` | celle de la page E-mail | `true` ou `false` : si Solstice envoie des e-mails. Chaque clé `SOLSTICE_MAIL_` fixée l'emporte sur la page E-mail. Voir [administration](administration.md#e-mail). |
+| `SOLSTICE_MAIL_HOST` | celui de la page E-mail | Serveur SMTP. Le fixer, ou le port, la sécurité, l'identifiant ou le mot de passe, prend les cinq dans la configuration. Obligatoire avec `SOLSTICE_MAIL_ENABLED=true` et avec les quatre autres. |
+| `SOLSTICE_MAIL_PORT` | `587`, `465` avec `tls`, `25` avec `none` | Port du serveur SMTP, de 1 à 65535. |
+| `SOLSTICE_MAIL_SECURITY` | `starttls` | `none`, `starttls` ou `tls`. `none` avec un identifiant seulement vers cette machine. |
+| `SOLSTICE_MAIL_USERNAME` | aucun | Identifiant SMTP. |
+| `SOLSTICE_MAIL_PASSWORD` | aucun | Son mot de passe. Jamais écrit dans la base. |
+| `SOLSTICE_MAIL_FROM` | celle de la page E-mail | Adresse d'expédition, par exemple `tickets@example.org`. |
+| `SOLSTICE_MAIL_FROMNAME` | celui de la page E-mail | Nom de l'expéditeur ; `Solstice` si vide. |
 
 `SOLSTICE_CONFIG` n'est lue que dans l'environnement. Il n'y a pas de base par
 défaut : sans `SOLSTICE_DB_URL`, l'assistant en demande une.

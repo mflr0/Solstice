@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"time"
 
-	"solstice/internal/mail"
 	"solstice/internal/sqlq"
 )
 
@@ -90,7 +89,7 @@ func (s *Server) systemInfo(w http.ResponseWriter, r *http.Request) error {
 		"attachments": c.attachments, "attachmentBytes": c.attachmentBytes.Int64}
 
 	mailOut := map[string]any{}
-	cfg, err := mail.LoadConfig(ctx, s.out.settings, s.secrets)
+	cfg, err := s.mailConfig(ctx)
 	mailOut["enabled"] = err == nil && cfg.Enabled
 	if st, err := s.out.outbox.Stats(ctx); err == nil {
 		mailOut["pending"], mailOut["failed"] = st.Pending, st.Failed

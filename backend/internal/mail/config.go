@@ -6,6 +6,7 @@ package mail
 import (
 	"context"
 	"net/mail"
+	"slices"
 	"strings"
 
 	"solstice/internal/secret"
@@ -104,6 +105,54 @@ func LoadConfig(ctx context.Context, st *settings.Store, box func() (*secret.Box
 		}
 	}
 	return c, nil
+}
+
+// Override is what the configuration file and the environment set, which
+// wins over the stored settings.
+type Override struct {
+	Config Config
+	Fields []string // the JSON names of the fields set, the password as "password"
+}
+
+// destination are where the password goes: an override takes them together,
+// so the password never goes to a destination the stored settings choose.
+var destination = []string{"host", "port", "security", "username", "password"}
+
+// NewOverride returns the override of the fields of c named in fields. A
+// field of the destination brings in the whole destination.
+func NewOverride(c Config, fields []string) Override {
+	set := slices.Clone(fields)
+	if slices.ContainsFunc(fields, func(f string) bool { return slices.Contains(destination, f) }) {
+		set = append(set, destination...)
+	}
+	o := Override{Config: c}
+	for _, f := range []string{"enabled", "host", "port", "security", "username", "password", "from", "fromName"} {
+		if slices.Contains(set, f) {
+			o.Fields = append(o.Fields, f)
+		}
+	}
+	return o
+}
+
+// Sets tells whether the override sets the field of that JSON name.
+func (o Override) Sets(field string) bool { return slices.Contains(o.Fields, field) }
+
+// Apply lays the override over c and fills in the defaults.
+func (o Override) Apply(c Config) Config {
+	v := o.Config
+	if o.Sets("enabled") {
+		c.Enabled = v.Enabled
+	}
+	if o.Sets("host") {
+		c.Host, c.Port, c.Security, c.Username, c.Password = v.Host, v.Port, v.Security, v.Username, v.Password
+	}
+	if o.Sets("from") {
+		c.From = v.From
+	}
+	if o.Sets("fromName") {
+		c.FromName = v.FromName
+	}
+	return c.WithDefaults()
 }
 
 // ReadStored reads the settings as stored, without defaults and without

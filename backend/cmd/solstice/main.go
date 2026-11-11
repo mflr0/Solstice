@@ -98,6 +98,16 @@ of the same name win over the file. Durations are written 30s, 5m, 1h30m.
   SOLSTICE_OIDC_REQUIREGROUP     only its members sign in this way (default none)
   SOLSTICE_OIDC_ADMINGROUP       its members are administrators, and only they (default none)
   SOLSTICE_OIDC_TIMEOUT          time a sign-in waits for the provider (default 10s)
+  SOLSTICE_MAIL_ENABLED          send e-mail, true or false; each SOLSTICE_MAIL_ key set wins
+                                 over the Mail page (default <the Mail page's>)
+  SOLSTICE_MAIL_HOST             SMTP server; setting it, or the port, security, user name or
+                                 password, takes all five from here
+  SOLSTICE_MAIL_PORT             its port; when empty, 587 with starttls, 465 with tls, 25 with none
+  SOLSTICE_MAIL_SECURITY         none, starttls or tls; starttls when empty
+  SOLSTICE_MAIL_USERNAME         SMTP user name, none when empty
+  SOLSTICE_MAIL_PASSWORD         its password
+  SOLSTICE_MAIL_FROM             sender address, e.g. tickets@example.org
+  SOLSTICE_MAIL_FROMNAME         sender name; Solstice when empty
 
 Without a configured database, or on a database without any account, "solstice serve"
 opens the setup wizard at /setup.
@@ -228,6 +238,7 @@ func runServe(ctx context.Context, args []string) error {
 		srv.SetBaseURL(baseURL)
 		srv.SetTrustedProxies(cfg.HTTP.TrustedProxies)
 		srv.SetSecretKey(cfg.SecretKey)
+		srv.SetMailOverride(cfg.MailOverride())
 		srv.SetMaxUpload(int64(cfg.HTTP.MaxUpload))
 		srv.SetMaxStorage(int64(cfg.HTTP.MaxStorage))
 		if dir != nil {

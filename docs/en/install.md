@@ -238,6 +238,14 @@ Durations are written `30s`, `5m`, `1h30m`.
 | `SOLSTICE_OIDC_REQUIREGROUP` | none | Only members of this group may sign in with the provider. |
 | `SOLSTICE_OIDC_ADMINGROUP` | none | Members of this group are administrators, and only they, among accounts signing in with the provider. |
 | `SOLSTICE_OIDC_TIMEOUT` | `10s` | Time a sign-in may wait for the provider. Must be positive. |
+| `SOLSTICE_MAIL_ENABLED` | the E-mail page's | `true` or `false`: whether Solstice sends e-mail. Each `SOLSTICE_MAIL_` key set wins over the E-mail page. See [administration](administration.md#e-mail). |
+| `SOLSTICE_MAIL_HOST` | the E-mail page's | SMTP server. Setting it, the port, security, user name or password takes all five from the configuration. Required with `SOLSTICE_MAIL_ENABLED=true` and with the four others. |
+| `SOLSTICE_MAIL_PORT` | `587`, `465` with `tls`, `25` with `none` | Port of the SMTP server, 1–65535. |
+| `SOLSTICE_MAIL_SECURITY` | `starttls` | `none`, `starttls` or `tls`. `none` with a user name only to this machine. |
+| `SOLSTICE_MAIL_USERNAME` | none | SMTP user name. |
+| `SOLSTICE_MAIL_PASSWORD` | none | Its password. Never written to the database. |
+| `SOLSTICE_MAIL_FROM` | the E-mail page's | Sender address, for example `tickets@example.org`. |
+| `SOLSTICE_MAIL_FROMNAME` | the E-mail page's | Sender name; `Solstice` when empty. |
 
 `SOLSTICE_CONFIG` itself is read only from the environment. There is no
 default database: without `SOLSTICE_DB_URL`, the wizard asks for one.
