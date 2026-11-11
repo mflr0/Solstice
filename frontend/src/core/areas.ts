@@ -12,6 +12,7 @@ export const ADMIN_SECTIONS = [
   'users',
   'groups',
   'projects',
+  'workflows',
   'securityLevels',
   'issueTypes',
   'priorities',
@@ -38,6 +39,7 @@ const ADMIN_SLUGS: Record<AdminSection, string> = {
   users: 'users',
   groups: 'groups',
   projects: 'projects',
+  workflows: 'workflows',
   securityLevels: 'security-levels',
   issueTypes: 'issue-types',
   priorities: 'priorities',
@@ -60,7 +62,7 @@ export type AdminGroup = 'general' | 'people' | 'projects' | 'issues' | 'integra
 export const ADMIN_NAV: readonly { group: AdminGroup; items: readonly AdminSection[] }[] = [
   { group: 'general', items: ['overview', 'settings', 'banner', 'themes'] },
   { group: 'people', items: ['users', 'groups'] },
-  { group: 'projects', items: ['projects', 'securityLevels'] },
+  { group: 'projects', items: ['projects', 'workflows', 'securityLevels'] },
   {
     group: 'issues',
     items: ['issueTypes', 'priorities', 'resolutions', 'statuses', 'linkTypes', 'fields'],
@@ -85,7 +87,7 @@ export function adminPath(item: AdminSection, sub?: string | number): string {
 }
 
 /** Sections that have pages below them (/admin/<slug>/<item>). */
-export const ADMIN_ITEM_SECTIONS: readonly AdminSection[] = ['issueTypes', 'webhooks'];
+export const ADMIN_ITEM_SECTIONS: readonly AdminSection[] = ['workflows', 'issueTypes', 'webhooks'];
 
 export const ACCOUNT_SECTIONS = [
   'profile',

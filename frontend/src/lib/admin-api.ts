@@ -18,6 +18,7 @@ import type {
   FieldInput,
   FieldRow,
   FieldTypeInfo,
+  GlobalWorkflow,
   GeneralSettings,
   GeneralSettingsInput,
   Group,
@@ -62,7 +63,7 @@ import type {
 import type { BoardKind } from '../core/board-types.js';
 import type { AdminTheme, AdminThemes } from '../core/admin-themes.js';
 import type { AdminProjectRow, ProjectSettings } from '../core/project-admin.js';
-import type { IdName, Me, Preferences, UserRef } from '../core/types.js';
+import type { IdName, Me, Preferences, UserRef, WorkflowInput } from '../core/types.js';
 import { query, request } from './api.js';
 
 const enc = encodeURIComponent;
@@ -191,6 +192,14 @@ export const adminApi = {
   updateStatus: (id: string, s: { name?: string; category?: string }) =>
     request<StatusRow>('PATCH', `/api/statuses/${enc(id)}`, s),
   deleteStatus: (id: string) => request<void>('DELETE', `/api/statuses/${enc(id)}`),
+
+  // Global workflows: the ones projects copy.
+  workflows: () => request<GlobalWorkflow[]>('GET', '/api/admin/workflows'),
+  createWorkflow: (w: { name: string; copyFrom?: number }) =>
+    request<{ id: number }>('POST', '/api/admin/workflows', w),
+  saveWorkflow: (id: number, w: WorkflowInput) =>
+    request<GlobalWorkflow[]>('PUT', `/api/admin/workflows/${id}`, w),
+  deleteWorkflow: (id: number) => request<void>('DELETE', `/api/admin/workflows/${id}`),
 
   // Issue layouts: an issue type's templates.
   typeLayout: (type: string | number, form: LayoutForm) =>

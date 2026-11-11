@@ -32,6 +32,8 @@ describe('matchRoute', () => {
     ['/admin/issue-types', { name: 'admin', section: 'issueTypes', item: null }],
     ['/admin/webhooks/12', { name: 'admin', section: 'webhooks', item: '12' }],
     ['/admin/webhooks/new', { name: 'admin', section: 'webhooks', item: 'new' }],
+    ['/admin/workflows', { name: 'admin', section: 'workflows', item: null }],
+    ['/admin/workflows/4', { name: 'admin', section: 'workflows', item: '4' }],
     ['/admin/updates', { name: 'admin', section: 'updates', item: null }],
     ['/admin/updates/1', { name: 'notFound' }],
     ['/admin/mail/3', { name: 'notFound' }],

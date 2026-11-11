@@ -1569,7 +1569,18 @@ export const de: Messages = {
     remapConfirm: 'Verschieben und speichern',
     remapDefault: (name: string) =>
       `Vorgangstypen, die zum Standard-Workflow „${name}“ zurückkehren: ihre dort fehlenden Status`,
+    globalIsDefault: 'Der globale Standard-Workflow.',
+    globalMakeDefaultHint: 'Der Workflow, der zuerst angeboten wird.',
     remapDeleteConfirm: 'Verschieben und löschen',
+  },
+
+  adminWorkflows: {
+    intro:
+      'Die Workflows, von denen Projekte ausgehen können. Ein Projekt erhält eine eigene Kopie: Eine Änderung hier ändert nie den Workflow eines Projekts.',
+    makeDefault: 'Als Standard festlegen',
+    madeDefault: (name: string) => `„${name}“ ist jetzt der Standard-Workflow.`,
+    notFound: 'Diesen Workflow gibt es nicht oder nicht mehr.',
+    deleteKeep: 'Projekte behalten ihre eigenen Workflows: Keiner davon ändert sich.',
   },
 
   adminArea: {
@@ -1593,6 +1604,7 @@ export const de: Messages = {
       users: 'Benutzer',
       groups: 'Gruppen',
       projects: 'Projekte',
+      workflows: 'Workflows',
       securityLevels: 'Sicherheitsstufen',
       issueTypes: 'Vorgangstypen',
       priorities: 'Prioritäten',
@@ -1616,6 +1628,7 @@ export const de: Messages = {
       users: 'Konten anlegen, deaktivieren, Passwörter ändern.',
       groups: 'Personen zusammenfassen, um ihnen gemeinsam Berechtigungen zu geben.',
       projects: 'Ein Projekt anlegen, umbenennen, archivieren oder löschen.',
+      workflows: 'Die Workflows, von denen Projekte ausgehen können.',
       securityLevels: 'Wer die Vorgänge auf jeder Sicherheitsstufe eines Projekts sieht.',
       issueTypes: 'Story, Fehler, Aufgabe… und die Unteraufgaben.',
       priorities: 'Die Dringlichkeit und die Farbe jeder Priorität.',
@@ -3338,6 +3351,7 @@ export const de: Messages = {
     whereBoards: 'Board-Spalten',
     whereIssues: 'Vorgänge',
     whereIssuesHint: 'Verschieben Sie diese Vorgänge zuerst in einen anderen Status.',
+    workflowGlobal: (workflow: string) => `${workflow} (global)`,
     workflowIn: (workflow: string, project: string) => `${workflow} (Projekt ${project})`,
     boardColumn: (board: string, column: string) => `${board}, Spalte ${column}`,
     problems: {

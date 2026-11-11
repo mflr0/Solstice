@@ -1556,8 +1556,19 @@ export const fr: Messages = {
     remapConfirm: 'Déplacer et enregistrer',
     remapDefault: (name: string) =>
       `Types de ticket rendus au workflow par défaut « ${name} » : leurs statuts absents de celui-ci`,
+    globalIsDefault: 'Le workflow global par défaut.',
+    globalMakeDefaultHint: 'Le workflow proposé en premier.',
     remapDeleteConfirm: 'Déplacer et supprimer',
   },
+  adminWorkflows: {
+    intro:
+      'Les workflows dont les projets peuvent partir. Un projet en reçoit sa propre copie : modifier un workflow ici ne change jamais celui d’un projet.',
+    makeDefault: 'Définir par défaut',
+    madeDefault: (name: string) => `« ${name} » est désormais le workflow par défaut.`,
+    notFound: 'Ce workflow n’existe pas, ou plus.',
+    deleteKeep: 'Les projets gardent leurs propres workflows : aucun ne change.',
+  },
+
   adminArea: {
     title: 'Administration',
     intro:
@@ -1579,6 +1590,7 @@ export const fr: Messages = {
       users: 'Utilisateurs',
       groups: 'Groupes',
       projects: 'Projets',
+      workflows: 'Workflows',
       securityLevels: 'Niveaux de confidentialité',
       issueTypes: 'Types de ticket',
       priorities: 'Priorités',
@@ -1602,6 +1614,7 @@ export const fr: Messages = {
       users: 'Créer des comptes, les désactiver, changer un mot de passe.',
       groups: 'Rassembler des personnes pour leur donner des droits ensemble.',
       projects: 'Créer, renommer, archiver ou supprimer un projet.',
+      workflows: 'Les workflows dont les projets peuvent partir.',
       securityLevels: 'Qui voit les tickets de chaque niveau de confidentialité d’un projet.',
       issueTypes: 'Récit, bogue, tâche… et les sous-tâches.',
       priorities: 'L’ordre d’urgence et la couleur de chaque priorité.',
@@ -3314,6 +3327,7 @@ export const fr: Messages = {
     whereBoards: 'Colonnes de tableau',
     whereIssues: 'Tickets',
     whereIssuesHint: 'Déplacez d’abord ces tickets vers un autre statut.',
+    workflowGlobal: (workflow: string) => `${workflow} (global)`,
     workflowIn: (workflow: string, project: string) => `${workflow} (projet ${project})`,
     boardColumn: (board: string, column: string) => `${board}, colonne ${column}`,
     problems: {
