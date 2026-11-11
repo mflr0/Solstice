@@ -2844,10 +2844,6 @@ export const en = {
     keyChecking: 'Checking…',
     keyFree: (key: string) => `${key} is available.`,
     template: 'Starting workflow',
-    templates: {
-      software: 'Software: To Do, In Progress, In Review, Done',
-      simple: 'Simple: To do, In progress, Done',
-    },
     leadHint: 'Optional, you by default. The lead has every right in the project.',
     description: 'Description',
     access: 'Who can work in the project',

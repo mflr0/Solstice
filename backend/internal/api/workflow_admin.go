@@ -749,8 +749,19 @@ func (s *Server) copyWorkflow(ctx context.Context, projectID any, name, initial 
 		return 0, err
 	}
 	defer tx.Rollback()
-	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, FALSE, ?)`,
-		projectID, sqlq.Truncate(name, sqlq.VarcharWidth), initial)
+	id, err := copyWorkflowTx(ctx, tx, projectID, name, false, initial, source)
+	if err != nil {
+		return 0, err
+	}
+	return id, tx.Commit()
+}
+
+// copyWorkflowTx writes, in tx, a workflow copying the statuses and
+// transitions of workflow source.
+func copyWorkflowTx(ctx context.Context, tx *sql.Tx, projectID any, name string, isDefault bool, initial string,
+	source int64) (int64, error) {
+	res, err := tx.ExecContext(ctx, `INSERT INTO workflows (project_id, name, is_default, initial_status_id) VALUES (?, ?, ?, ?)`,
+		projectID, sqlq.Truncate(name, sqlq.VarcharWidth), isDefault, initial)
 	if err != nil {
 		return 0, err
 	}
@@ -764,7 +775,7 @@ func (s *Server) copyWorkflow(ctx context.Context, projectID any, name, initial 
 		id, source); err != nil {
 		return 0, err
 	}
-	return id, tx.Commit()
+	return id, nil
 }
 
 // deleteWorkflow removes a workflow other than the default; its issue types

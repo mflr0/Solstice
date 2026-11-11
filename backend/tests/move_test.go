@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/jirafixture"
 )
 
@@ -115,7 +116,7 @@ func newMoveEnv(t *testing.T) *moveEnv {
 
 	e.src = newProject(t, admin, map[string]any{"issueTypes": []string{e.typeA, e.subSrc},
 		"access": map[string]any{"holder": "everyone"}})
-	e.dst = newProject(t, admin, map[string]any{"issueTypes": []string{e.typeB, e.subDst}, "template": "simple",
+	e.dst = newProject(t, admin, map[string]any{"issueTypes": []string{e.typeB, e.subDst}, "workflow": seededWorkflow(t, admin, i18n.DefaultWorkflowSimple).ID,
 		"defaultAssignee": "lead"})
 	e.srcID = dbInt(t, `SELECT id FROM projects WHERE pkey = ?`, e.src)
 	e.dstID = dbInt(t, `SELECT id FROM projects WHERE pkey = ?`, e.dst)

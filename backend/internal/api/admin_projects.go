@@ -79,38 +79,6 @@ func (s *Server) projectKeyCheck(w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, out)
 }
 
-// projectTemplates are the workflows a new project can start with: its
-// statuses in order. Any status can be reached from any other.
-var projectTemplates = map[string]struct {
-	statuses []templateStatus
-}{
-	"software": {[]templateStatus{{i18n.M(i18n.DefaultStatusToDo), issue.Todo},
-		{i18n.M(i18n.DefaultStatusInProgress), issue.Doing}, {i18n.M(i18n.DefaultStatusInReview), issue.Doing},
-		{i18n.M(i18n.DefaultStatusDone), issue.Done}}},
-	"simple": {[]templateStatus{{i18n.M(i18n.DefaultStatusToDo), issue.Todo},
-		{i18n.M(i18n.DefaultStatusInProgress), issue.Doing}, {i18n.M(i18n.DefaultStatusDone), issue.Done}}},
-}
-
-type templateStatus struct {
-	name     i18n.Message
-	category issue.StatusCategory
-}
-
-// projectStatus is a status of a new project, named in the instance's language.
-type projectStatus struct {
-	name     string
-	category issue.StatusCategory
-}
-
-// templateStatuses names the statuses of a template in lang.
-func templateStatuses(statuses []templateStatus, lang string) []projectStatus {
-	out := make([]projectStatus, len(statuses))
-	for i, st := range statuses {
-		out[i] = projectStatus{st.name.In(lang), st.category}
-	}
-	return out
-}
-
 // memberPermissions are what the people given access to a new project may
 // do; the lead may do everything.
 var memberPermissions = []string{perm.Browse, perm.Create, perm.Edit, perm.Comment, perm.Transition, perm.Assign,
@@ -197,7 +165,7 @@ type newProjectInput struct {
 	Description     *string      `json:"description"`
 	Lead            *int64       `json:"lead"`
 	Category        *int64       `json:"category"`
-	Template        string       `json:"template"`
+	Workflow        int64        `json:"workflow"` // a global workflow; 0 for the default
 	Access          *accessInput `json:"access"`
 	IssueTypes      []string     `json:"issueTypes"`
 	DefaultAssignee *string      `json:"defaultAssignee"`
@@ -206,16 +174,16 @@ type newProjectInput struct {
 
 // newProject is a project to create, checked.
 type newProject struct {
-	key, name   string
-	description *string
-	lead        *int64
-	category    *int64
-	template    string
-	statuses    []projectStatus
-	assignTo    string
-	access      *accessInput
-	types       []string
-	board       string
+	key, name    string
+	description  *string
+	lead         *int64
+	category     *int64
+	workflow     int64 // the global workflow to copy
+	workflowName string
+	assignTo     string
+	access       *accessInput
+	types        []string
+	board        string
 }
 
 // checkNewProject checks a project to create, raw telling which fields were
@@ -224,7 +192,7 @@ type newProject struct {
 func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, raw map[string]json.RawMessage,
 	lead int64) (*newProject, error) {
 	p := &newProject{key: strings.ToUpper(strings.TrimSpace(in.Key)), description: in.Description, lead: &lead,
-		category: in.Category, template: in.Template, assignTo: "unassigned", access: in.Access, board: in.Board}
+		category: in.Category, assignTo: "unassigned", access: in.Access, board: in.Board}
 	if p.board != "" && p.board != "kanban" && p.board != "scrum" {
 		return nil, fail(http.StatusBadRequest, i18n.BoardTypeUnknown)
 	}
@@ -249,14 +217,14 @@ func (s *Server) checkNewProject(ctx context.Context, in *newProjectInput, raw m
 	if err := s.checkCategory(ctx, p.category); err != nil {
 		return nil, err
 	}
-	if p.template == "" {
-		p.template = "software"
+	err = s.db.QueryRowContext(ctx, `SELECT id, name FROM workflows WHERE project_id IS NULL
+		AND (id = ? OR (? = 0 AND is_default)) LIMIT 1`, in.Workflow, in.Workflow).Scan(&p.workflow, &p.workflowName)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, fail(http.StatusBadRequest, i18n.ProjectWorkflowUnknown)
 	}
-	tmpl, ok := projectTemplates[p.template]
-	if !ok {
-		return nil, fail(http.StatusBadRequest, i18n.ProjectTemplateUnknown)
+	if err != nil {
+		return nil, err
 	}
-	p.statuses = templateStatuses(tmpl.statuses, s.defaultLanguage())
 	if in.DefaultAssignee != nil {
 		if err := checkAssigneeType(*in.DefaultAssignee); err != nil {
 			return nil, err
@@ -358,7 +326,8 @@ func (s *Server) createProject(w http.ResponseWriter, r *http.Request) error {
 	if p.lead != nil {
 		leads = append(leads, *p.lead)
 	}
-	details := map[string]any{"name": p.name, "template": p.template, "lead": s.userNames(ctx, leads),
+	details := map[string]any{"name": p.name,
+		"workflow": map[string]any{"id": p.workflow, "name": p.workflowName}, "lead": s.userNames(ctx, leads),
 		"issueTypes": p.types}
 	if a := p.access; a != nil {
 		details["access"] = map[string]any{"holder": a.Holder, "id": a.ID}
@@ -391,10 +360,21 @@ func insertProject(ctx context.Context, tx *sql.Tx, p *newProject) (int64, error
 	return id, nil
 }
 
-// insertWorkflow gives the project the default workflow of its template,
-// creating the statuses it lacks.
+// insertWorkflow gives the project its default workflow, a copy of the
+// chosen global workflow. The share lock keeps that workflow from changing or
+// going while it is copied.
 func insertWorkflow(ctx context.Context, tx *sql.Tx, id int64, p *newProject) error {
-	return writeNewWorkflow(ctx, tx, id, "Workflow "+p.key, true, p.statuses)
+	var initial string
+	err := tx.QueryRowContext(ctx, `SELECT initial_status_id FROM workflows WHERE id = ? AND project_id IS NULL
+		LOCK IN SHARE MODE`, p.workflow).Scan(&initial)
+	if errors.Is(err, sql.ErrNoRows) {
+		return fail(http.StatusBadRequest, i18n.ProjectWorkflowUnknown)
+	}
+	if err != nil {
+		return err
+	}
+	_, err = copyWorkflowTx(ctx, tx, id, "Workflow "+p.key, true, initial, p.workflow)
+	return err
 }
 
 // writeNewWorkflow adds a workflow to a project (nil: a global workflow)

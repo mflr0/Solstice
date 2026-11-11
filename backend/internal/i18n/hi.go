@@ -210,7 +210,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectNameTaken:           "“%s” नाम का एक प्रोजेक्ट पहले से मौजूद है।",
 	ProjectLeadInactive:        "प्रोजेक्ट लीड कोई सक्रिय खाता होना चाहिए।",
 	ProjectCategoryNotFound:    "श्रेणी नहीं मिली।",
-	ProjectTemplateUnknown:     "अज्ञात टेम्पलेट: software या simple।",
+	ProjectWorkflowUnknown:     "अज्ञात वर्कफ़्लो: कोई ग्लोबल वर्कफ़्लो चुनें।",
 	ProjectAssigneeTypeUnknown: "डिफ़ॉल्ट असाइनमेंट: unassigned या lead।",
 	ProjectAssigneeNoLead:      "नए टिकट प्रोजेक्ट लीड को नहीं जा सकते: प्रोजेक्ट की कोई लीड नहीं है।",
 	ProjectIssueTypeRequired:   "कम से कम एक ऐसा टिकट प्रकार चुनें जो सब-टास्क न हो।",

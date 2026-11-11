@@ -209,7 +209,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectNameTaken:           "Ein Projekt mit dem Namen „%s“ existiert bereits.",
 	ProjectLeadInactive:        "Die Projektleitung muss ein aktives Konto sein.",
 	ProjectCategoryNotFound:    "Kategorie nicht gefunden.",
-	ProjectTemplateUnknown:     "Unbekanntes Vorlagenmodell: software oder simple.",
+	ProjectWorkflowUnknown:     "Unbekannter Workflow: Wählen Sie einen globalen Workflow.",
 	ProjectAssigneeTypeUnknown: "Standardzuweisung: unassigned oder lead.",
 	ProjectAssigneeNoLead:      "Neue Vorgänge können nicht an die Projektleitung gehen: Das Projekt hat keine.",
 	ProjectIssueTypeRequired:   "Wählen Sie mindestens einen Vorgangstyp aus, der keine Unteraufgabe ist.",

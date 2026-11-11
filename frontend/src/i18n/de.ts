@@ -2900,10 +2900,6 @@ export const de: Messages = {
     keyChecking: 'Wird geprüft…',
     keyFree: (key: string) => `${key} ist verfügbar.`,
     template: 'Start-Workflow',
-    templates: {
-      software: 'Software: To Do, In Arbeit, In Prüfung, Erledigt',
-      simple: 'Einfach: Zu erledigen, In Arbeit, Erledigt',
-    },
     leadHint: 'Optional, standardmäßig Sie. Die Leitung hat alle Rechte im Projekt.',
     description: 'Beschreibung',
     access: 'Wer im Projekt arbeiten darf',

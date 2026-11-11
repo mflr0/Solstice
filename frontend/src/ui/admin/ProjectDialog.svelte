@@ -2,7 +2,7 @@
   import { refused, reportFailure } from '../../lib/ui.svelte.js';
   import { untrack } from 'svelte';
   import { hasProblems } from '../../core/admin-forms.js';
-  import type { Category, Group, KeyCheck } from '../../core/admin-types.js';
+  import type { Category, GlobalWorkflow, Group, KeyCheck } from '../../core/admin-types.js';
   import { adminPath } from '../../core/areas.js';
   import type { BoardKind } from '../../core/board-types.js';
   import {
@@ -46,7 +46,7 @@
     return {
       name: '',
       key: '',
-      template: 'software',
+      workflow: null,
       lead: me ? { id: me.id, username: me.username, name: me.name, active: true } : null,
       category: null,
       access: 'lead',
@@ -66,6 +66,7 @@
   let busy = $state(false);
   let categories = $state<Category[]>([]);
   let groups = $state<Group[]>([]);
+  let workflows = $state<GlobalWorkflow[]>([]);
   let keyState = $state<{ key: string; check: KeyCheck | null } | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
   let seq = 0;
@@ -108,6 +109,16 @@
       .then((c) => (categories = c))
       .catch((e: unknown) => {
         categories = [];
+        reportFailure(e);
+      });
+    adminApi
+      .workflows()
+      .then((w) => {
+        workflows = w;
+        form.workflow ??= w.find((x) => x.default)?.id ?? null;
+      })
+      .catch((e: unknown) => {
+        workflows = [];
         reportFailure(e);
       });
     adminApi
@@ -286,12 +297,13 @@
       <span>{t.projectsAdmin.template}</span>
       <Dropdown
         label={t.projectsAdmin.template}
-        value={form.template}
-        options={[
-          { value: 'software', label: t.projectsAdmin.templates.software },
-          { value: 'simple', label: t.projectsAdmin.templates.simple },
-        ]}
-        onchange={(v) => (form.template = v as 'software' | 'simple')}
+        value={form.workflow === null ? '' : String(form.workflow)}
+        options={workflows.map((w) => ({
+          value: String(w.id),
+          label: w.name,
+          hint: w.statuses.map((s) => s.name).join(', '),
+        }))}
+        onchange={(v) => (form.workflow = v ? Number(v) : null)}
       />
     </div>
 

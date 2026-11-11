@@ -50,6 +50,6 @@ func TestSetupSeedsCatalogues(t *testing.T) {
 	for _, it := range meta.IssueTypes {
 		types = append(types, it.ID)
 	}
-	admin.call("POST", "/api/projects", map[string]any{"key": "PREM", "name": "Premier", "template": "software",
+	admin.call("POST", "/api/projects", map[string]any{"key": "PREM", "name": "Premier",
 		"access": map[string]string{"holder": "everyone"}, "issueTypes": types}, http.StatusCreated, nil)
 }

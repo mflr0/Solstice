@@ -105,7 +105,7 @@ describe('project creation', () => {
   const form = (patch: Partial<ProjectForm> = {}): ProjectForm => ({
     name: 'Site web',
     key: 'SW',
-    template: 'software',
+    workflow: null,
     lead: { id: 2, username: 'marie.durand', name: 'Marie Durand', active: true },
     category: null,
     access: 'lead',
@@ -127,7 +127,6 @@ describe('project creation', () => {
     expect(projectPayload(form({ description: '  Le site  ' }))).toEqual({
       key: 'SW',
       name: 'Site web',
-      template: 'software',
       description: 'Le site',
       lead: 2,
       category: null,
@@ -138,6 +137,11 @@ describe('project creation', () => {
       category: 4,
     });
     expect(projectPayload(form({ access: 'everyone' })).access).toEqual({ holder: 'everyone' });
+  });
+
+  it('sends the chosen workflow, none for the default', () => {
+    expect(projectPayload(form({ workflow: 7 }))).toMatchObject({ workflow: 7 });
+    expect(projectPayload(form())).not.toHaveProperty('workflow');
   });
 
   it('sends an emptied lead as null', () => {
@@ -238,7 +242,7 @@ describe('creation: issue types and default assignee', () => {
   const form: ProjectForm = {
     name: 'Site web',
     key: 'SW',
-    template: 'software',
+    workflow: null,
     lead: null,
     category: null,
     access: 'lead',
