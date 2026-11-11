@@ -48,7 +48,7 @@ var catalogueKinds = map[string]catalogueKind{
 			(SELECT COUNT(*) FROM issues i WHERE i.issue_type_id = t.id),
 			(SELECT COUNT(*) FROM project_issue_types p WHERE p.issue_type_id = t.id) FROM issue_types t`,
 		scan: scanIssueType, move: moveIssueType, checkDelete: keepLastIssueType, checkReplacement: sameSubtask,
-		icons: priorityIcons},
+		icons: issueTypeIcons},
 	"priorities": {table: "priorities", audit: "priority", fields: []string{"description", "color", "icon", "default"},
 		query: `SELECT t.id, t.name, t.description, t.position, t.color, t.icon, t.is_default,
 			(SELECT COUNT(*) FROM issues i WHERE i.priority_id = t.id) FROM priorities t`,
