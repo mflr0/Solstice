@@ -1490,9 +1490,10 @@ func TestSearchHelpers(t *testing.T) {
 		Total  int
 		Facets map[string]map[string]int
 		Users  map[string]struct{ Username string }
+		Epics  map[string]struct{ Key, Summary string }
 	}
 	q := url.QueryEscape("project = DEMO")
-	if status := paul.get("/api/issues/facets?jql="+q+"&fields=status,assignee,labels,nope", &facets); status != 200 {
+	if status := paul.get("/api/issues/facets?jql="+q+"&fields=status,assignee,labels,epic,nope", &facets); status != 200 {
 		t.Fatalf("facets: %d", status)
 	}
 	_, total := runSearch(t, paul, "project = DEMO")
@@ -1506,6 +1507,23 @@ func TestSearchHelpers(t *testing.T) {
 	for id := range facets.Facets["assignee"] {
 		if id != "" && facets.Users[id].Username == "" {
 			t.Errorf("assignee %s counted without a name: %+v", id, facets.Users)
+		}
+	}
+	if len(facets.Facets["epic"]) < 2 || facets.Facets["epic"][""] == 0 {
+		t.Errorf("epic facet: want epics and issues without one, got %v", facets.Facets["epic"])
+	}
+	for id, n := range facets.Facets["epic"] {
+		jql := `project = DEMO AND "Epic Link" is EMPTY`
+		if id != "" {
+			e := facets.Epics[id]
+			if e.Key == "" || e.Summary == "" {
+				t.Errorf("epic %s counted without a name: %+v", id, facets.Epics)
+				continue
+			}
+			jql = `project = DEMO AND "Epic Link" = ` + e.Key
+		}
+		if _, want := runSearch(t, paul, jql); n != want {
+			t.Errorf("epic %q: %d counted, %d found by %s", id, n, want, jql)
 		}
 	}
 	if _, ok := facets.Facets["nope"]; ok {

@@ -203,6 +203,7 @@ export const FACET_FIELDS: ListField[] = [
   'labels',
   'reporter',
   'resolution',
+  'epic',
 ];
 
 /**
