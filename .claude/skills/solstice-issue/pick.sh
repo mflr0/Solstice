@@ -1,24 +1,19 @@
 #!/bin/bash
-# Picks, claims and finishes Solstice tickets for the solstice-issue skill.
+# Git and pull-request steps of the solstice-issue skill. The tickets live in
+# Solstice (SOL) and the skill handles them through its MCP tools.
 #
-#   pick.sh [number] [label...]      list candidates (or check one ticket),
-#                                     then print the first free one in full
-#   pick.sh --start N TOPIC           claim N and create its worktree; exit 3
-#                                     if another session holds it
-#   pick.sh --claim N                 claim N only; exit 3 if another session holds it
-#   pick.sh --release N               drop a claim
-#   pick.sh --ship N TOPIC draft|ready [--title T] [--note T]
-#                                     push, open the PR, comment "Closes #N."
-#   pick.sh --finish N PR TOPIC       wait for CI, merge, run --done, remove the
-#                                     worktree and branches, pull the base;
-#                                     exit 4 if a check failed
-#   pick.sh --done N PR               after merge: unlabel, close, tick tracker
+#   pick.sh --start TOPIC             create the worktree and its branch
+#   pick.sh --ship KEY TOPIC draft|ready [--title T] [--note T]
+#                                     push, open the PR, comment "Closes KEY."
+#   pick.sh --finish PR TOPIC         wait for CI, merge, remove the worktree
+#                                     and branches, pull the base; exit 4 if a
+#                                     check failed
+#   pick.sh --last-commit KEY         time of the last commit of the open PRs
+#                                     naming KEY, empty if none
 set -euo pipefail
 
 R=mflr0/Solstice
 BASE=feat/v1.0
-LABEL='in progress'
-STALE_H=24
 
 die() { echo "$*" >&2; exit 1; }
 
@@ -33,52 +28,8 @@ main_checkout() {
 
 worktree_of() { echo "$(dirname "$1")/$(basename "$1")-$2"; }
 
-# Epoch seconds of an ISO-8601 UTC time, with GNU date or else BSD date.
-epoch() { date -u -d "$1" +%s 2>/dev/null || date -j -u -f '%Y-%m-%dT%H:%M:%SZ' "$1" +%s; }
-
-# Time the label was last added to issue $1, empty if never.
-labeled_at() {
-  gh api "repos/$R/issues/$1/events?per_page=100" \
-    --jq "[.[] | select(.event == \"labeled\" and .label.name == \"$LABEL\")] | last | .created_at // empty"
-}
-
-# Whether the claim on $1 is stale: label older than STALE_H and no open PR
-# naming the issue got a commit within STALE_H.
-stale() {
-  local at last now
-  at=$(labeled_at "$1")
-  [ -n "$at" ] || return 0
-  now=$(date -u +%s)
-  [ $((now - $(epoch "$at"))) -gt $((STALE_H * 3600)) ] || return 1
-  last=$(gh pr list -R "$R" --state open --search "$1" --json commits \
-    --jq '[.[].commits[-1].committedDate] | max // empty')
-  [ -z "$last" ] && return 0
-  [ $((now - $(epoch "$last"))) -gt $((STALE_H * 3600)) ]
-}
-
-claim() {
-  local n=$1 has
-  has=$(gh issue view "$n" -R "$R" --json state,labels \
-    --jq "[.state, (.labels | map(.name) | index(\"$LABEL\") != null)] | @tsv")
-  case $has in
-    OPEN*true)
-      if stale "$n"; then
-        echo "#$n: stale claim, releasing it"
-        gh issue edit "$n" -R "$R" --remove-label "$LABEL" >/dev/null
-      else
-        echo "#$n: already claimed"; exit 3
-      fi ;;
-    OPEN*) ;;
-    *) die "#$n is not open" ;;
-  esac
-  gh label create "$LABEL" -R "$R" --color FBCA04 \
-    --description 'A Claude session is working on it' >/dev/null 2>&1 || true
-  gh issue edit "$n" -R "$R" --add-label "$LABEL" >/dev/null
-  echo "#$n: claimed"
-}
-
 start() {
-  local n=$1 topic=$2 main wt br=v1.0/$2
+  local topic=$1 main wt br=v1.0/$1
   main=$(main_checkout)
   wt=$(worktree_of "$main" "$topic")
   [ -n "$(git -C "$main" config --local user.email)" ] ||
@@ -86,7 +37,6 @@ start() {
   [ ! -e "$wt" ] || die "$wt already exists"
   ! git -C "$main" show-ref --verify --quiet "refs/heads/$br" || die "branch $br already exists"
   git -C "$main" fetch -q origin
-  claim "$n"
   git -C "$main" worktree add -q -b "$br" "$wt" "origin/$BASE"
   echo "worktree: $wt (branch $br from origin/$BASE)"
 }
@@ -105,7 +55,7 @@ ship() {
   case $mode in
     draft) draft=(--draft) ;;
     ready) ;;
-    *) die "usage: pick.sh --ship N TOPIC draft|ready [--title T] [--note T]" ;;
+    *) die "usage: pick.sh --ship KEY TOPIC draft|ready [--title T] [--note T]" ;;
   esac
   main=$(main_checkout)
   wt=$(worktree_of "$main" "$topic")
@@ -125,8 +75,8 @@ ship() {
     pr=${url##*/}
   fi
   # The stale-claim check finds the pull request through this comment.
-  if ! gh api "repos/$R/issues/$pr/comments?per_page=100" --jq '.[].body' | grep -q "^Closes #$n\.\$"; then
-    body="Closes #$n."
+  if ! gh api "repos/$R/issues/$pr/comments?per_page=100" --jq '.[].body' | grep -q "^Closes $n\.\$"; then
+    body="Closes $n."
     [ -z "$note" ] || body+=$'\n\n'"$note"
     gh pr comment "$pr" -R "$R" --body "$body" >/dev/null
   fi
@@ -134,7 +84,7 @@ ship() {
 }
 
 finish() {
-  local n=$1 pr=$2 topic=$3 main wt br=v1.0/$3 state draft head_ref head i failed
+  local pr=$1 topic=$2 main wt br=v1.0/$2 state draft head_ref head i failed
   main=$(main_checkout)
   wt=$(worktree_of "$main" "$topic")
   state=$(gh pr view "$pr" -R "$R" --json state,isDraft,headRefName,headRefOid \
@@ -163,7 +113,6 @@ finish() {
     MERGED) echo "PR #$pr: already merged" ;;
     *) die "PR #$pr is $state" ;;
   esac
-  done_ "$n" "$pr"
   if [ -d "$wt" ]; then git -C "$main" worktree remove "$wt"; fi
   if git -C "$main" show-ref --verify --quiet "refs/heads/$br"; then git -C "$main" branch -q -D "$br"; fi
   if [ -n "$(git -C "$main" ls-remote --heads origin "$br")" ]; then git -C "$main" push -q origin --delete "$br"; fi
@@ -173,144 +122,16 @@ finish() {
   echo "$main: $BASE at $(git -C "$main" log -1 --format='%h %s')"
 }
 
-release() {
-  gh issue edit "$1" -R "$R" --remove-label "$LABEL" >/dev/null
-  echo "#$1: released"
-}
-
-done_() {
-  local n=$1 pr=$2 tracker body new
-  gh issue edit "$n" -R "$R" --remove-label "$LABEL" >/dev/null 2>&1 || true
-  if [ "$(gh issue view "$n" -R "$R" --json state --jq .state)" = OPEN ]; then
-    gh issue close "$n" -R "$R" -c "Done in #$pr." >/dev/null
-  fi
-  echo "#$n: closed"
-  tracker=$(gh issue view "$n" -R "$R" --json body \
-    --jq '[.body | capture("Tracked in #(?<t>[0-9]+)")][0].t // empty')
-  [ -n "$tracker" ] || return 0
-  body=$(gh issue view "$tracker" -R "$R" --json body --jq .body)
-  new=$(printf '%s\n' "$body" | sed -E "s/^([[:space:]]*)- \[ \] #$n([^0-9]|\$)/\1- [x] #$n\2/")
-  if [ "$new" != "$body" ]; then
-    printf '%s\n' "$new" | gh issue edit "$tracker" -R "$R" --body-file - >/dev/null
-    echo "#$tracker: ticked #$n"
-  fi
-}
-
-list() {
-  local num=null filters=() all cands deps q states claimed n groups first
-  for a in "$@"; do
-    case $a in
-      *[!0-9]*) filters+=("$a") ;;
-      *) num=$a ;;
-    esac
-  done
-  all=$(gh issue list -R "$R" --state open --limit 500 \
-    --json number,title,labels,assignees,body)
-  cands=$(jq -c --argjson num "$num" \
-    --argjson filters "$(printf '%s\n' ${filters[@]+"${filters[@]}"} | jq -R . | jq -sc 'map(select(. != ""))')" \
-    --arg label "$LABEL" '
-    def nums: [scan("#([0-9]+)") | .[0] | tonumber];
-    def waits: [scan("(?i)waits for[^\n]*") | nums[]];
-    def tracker: [capture("Tracked in #(?<t>[0-9]+)")][0].t // null | if . then tonumber else null end;
-    def scope: [capture("In scope: (?<f>[^\n]*)")][0].f // "" | rtrimstr(".") | split(", ") | map(select(. != ""));
-    def isbug: .labels | map(.name) | index("bug") != null;
-    (map({key: (.number | tostring), value: .body}) | from_entries) as $bodies
-    | ([.[] | .body | tracker | select(.)] | unique) as $trackers
-    | [.[] | select(isbug) | {number, files: (.body | scope)}] as $bugs
-    | map(
-        .number as $n
-        | (.body | tracker) as $tr
-        | (($bodies[$tr | tostring] // "") | split("\n")) as $lines
-        | ($lines | map(test("^\\s*- \\[.\\] #\($n)\\b")) | index(true)) as $pos
-        | (.body | scope) as $files
-        | {
-            number, title,
-            labels: (.labels | map(.name)),
-            assigned: (.assignees | length > 0),
-            tracker: $tr,
-            pos: $pos,
-            waits: ((.body | waits) + (if $pos then $lines[$pos] | waits else [] end) | unique),
-            # Open bugs go before other tickets on their files. Bugs are not
-            # checked against each other: two on one file would wait forever.
-            shared: (if isbug then [] else
-              [$bugs[] | select(.number != $n and any(.files[]; . as $f | $files | index($f))) | .number]
-              end),
-          }
-        | select($trackers | index($n) | not)
-      )
-    | map(select(
-        if $num != null then .number == $num
-        else (.assigned | not)
-          and (.labels as $ls | all($filters[]; . as $f | $ls | index($f)))
-          and (($filters | index("enhancement")) or (.labels | index("enhancement") | not))
-        end))
-    | sort_by([.tracker == null, .tracker // 0, .pos // 1e9, .number])
-    | map(.claimed = (.labels | index($label) != null))
-  ' <<<"$all")
-  [ "$cands" != "[]" ] || { echo "No candidate."; return; }
-
-  deps=$(jq -r '[.[].waits[]] | unique | .[]' <<<"$cands")
-  states='{}'
-  if [ -n "$deps" ]; then
-    q='query { repository(owner: "mflr0", name: "Solstice") {'
-    for d in $deps; do
-      q+=" n$d: issueOrPullRequest(number: $d) { __typename ... on Issue { state } ... on PullRequest { state merged } }"
-    done
-    q+=' } }'
-    states=$(gh api graphql -f query="$q" --jq '.data.repository' 2>/dev/null || echo '{}')
-  fi
-
-  claimed=''
-  for n in $(jq -r '.[] | select(.claimed) | .number' <<<"$cands"); do
-    if stale "$n"; then claimed+="$n "; fi
-  done
-
-  groups=$(jq -c --argjson st "$states" --arg stale "$claimed" '
-    def why($d): ($st["n\($d)"] // null) as $s
-      | if $s == null then null
-        elif $s.__typename == "Issue" then (if $s.state == "OPEN" then "#\($d) open" else null end)
-        elif $s.merged then null
-        else "#\($d) PR \($s.state | ascii_downcase)" end;
-    ($stale | split(" ") | map(select(. != "") | tonumber)) as $stl
-    | map(. + {blockers: ([.waits[] as $d | why($d) | select(.)]
-                 + if .shared == [] then [] else ["bugs on its files: \(.shared | map("#\(.)") | join(" "))"] end),
-               stale: (.number as $n | $stl | index($n) != null)})
-    | (map(select((.blockers | length == 0) and ((.claimed | not) or .stale)))) as $free
-    | (map(select(.claimed and (.stale | not)))) as $taken
-    | (map(select((.blockers | length > 0) and ((.claimed | not) or .stale)))) as $blocked
-    | {$free, $taken, $blocked}
-  ' <<<"$cands")
-
-  jq -r --argjson num "$num" '
-    .free as $free | .taken as $taken | .blocked as $blocked
-    | if $free == [] and $num == null then
-        "Nothing free: \($blocked | length) blocked, \($taken | length) claimed."
-      else
-        "Candidates, in order (\($free | length)):",
-        ($free[:10][] | "  #\(.number) [\(.labels | join(","))] \(.title)\(if .stale then " (stale claim)" else "" end)"),
-        (if ($free | length) > 10 then "  +\(($free | length) - 10) more" else empty end),
-        (if ($taken | length) > 0 then "Claimed: \($taken | map("#\(.number)") | join(" "))" else empty end),
-        (if ($blocked | length) > 0 then "Blocked (\($blocked | length)):",
-          ($blocked[:10][] | "  #\(.number) by \(.blockers | join(", "))") else empty end),
-        (if ($blocked | length) > 10 then "  +\(($blocked | length) - 10) more" else empty end)
-      end
-  ' <<<"$groups"
-
-  first=$(jq -r '.free[0].number // empty' <<<"$groups")
-  [ -n "$first" ] || return 0
-  echo
-  gh issue view "$first" -R "$R" --json number,title,body,comments --jq '
-    "=== #\(.number) \(.title)\n\n\(.body)"
-    + (.comments | map("\n\n--- \(.author.login), \(.createdAt[:10]):\n\(.body)") | join(""))'
+last_commit() {
+  gh pr list -R "$R" --state open --search "\"Closes $1.\" in:comments" --json commits \
+    --jq '[.[].commits[-1].committedDate] | max // empty'
 }
 
 case ${1:-} in
-  --start) [ $# -eq 3 ] || die "usage: pick.sh --start N TOPIC"; start "$2" "$3" ;;
-  --claim) [ $# -eq 2 ] || die "usage: pick.sh --claim N"; claim "$2" ;;
-  --release) [ $# -eq 2 ] || die "usage: pick.sh --release N"; release "$2" ;;
-  --ship) [ $# -ge 4 ] || die "usage: pick.sh --ship N TOPIC draft|ready [--title T] [--note T]"; shift; ship "$@" ;;
-  --finish) [ $# -eq 4 ] || die "usage: pick.sh --finish N PR TOPIC"; finish "$2" "$3" "$4" ;;
-  --done) [ $# -eq 3 ] || die "usage: pick.sh --done N PR"; done_ "$2" "$3" ;;
-  -h|--help) sed -n '2,15p' "$0" ;;
-  *) list "$@" ;;
+  --start) [ $# -eq 2 ] || die "usage: pick.sh --start TOPIC"; start "$2" ;;
+  --ship) [ $# -ge 4 ] || die "usage: pick.sh --ship KEY TOPIC draft|ready [--title T] [--note T]"; shift; ship "$@" ;;
+  --finish) [ $# -eq 3 ] || die "usage: pick.sh --finish PR TOPIC"; finish "$2" "$3" ;;
+  --last-commit) [ $# -eq 2 ] || die "usage: pick.sh --last-commit KEY"; last_commit "$2" ;;
+  -h|--help) sed -n '2,13p' "$0" ;;
+  *) die "usage: see pick.sh --help" ;;
 esac
