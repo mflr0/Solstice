@@ -1,5 +1,5 @@
 #!/bin/bash
-# Picks, claims and finishes Solstice tickets for the work-issue skill.
+# Picks, claims and finishes Solstice tickets for the solstice-issue skill.
 #
 #   pick.sh [number] [label...]      list candidates (or check one ticket),
 #                                     then print the first free one in full
