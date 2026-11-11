@@ -10,6 +10,7 @@ import type {
   Holder,
   IdName,
   Permission,
+  PriorityIcon,
   StatusCategory,
   StatusRef,
   TypeFill,
@@ -550,8 +551,8 @@ export interface CatalogItem {
   color?: string;
   /** Issue types. */
   fill?: TypeFill;
-  /** Issue types. */
-  icon?: TypeIcon;
+  /** Issue types (a TypeIcon) and priorities (a PriorityIcon). */
+  icon?: TypeIcon | PriorityIcon;
   /** Priorities and resolutions. */
   default?: boolean;
   /** Link types. */
@@ -563,10 +564,10 @@ export interface CatalogItem {
   links?: number;
 }
 
-/** What creating or changing a catalogue item sends: "" clears an issue type's fill or icon. */
+/** What creating or changing a catalogue item sends: "" clears a fill or an icon. */
 export type CatalogInput = Omit<Partial<CatalogItem>, 'fill' | 'icon'> & {
   fill?: TypeFill | '';
-  icon?: TypeIcon | '';
+  icon?: TypeIcon | PriorityIcon | '';
 };
 
 /** Where a status is used (GET /api/admin/statuses/{id}/usage). */

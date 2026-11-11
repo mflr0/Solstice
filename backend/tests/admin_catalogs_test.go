@@ -330,6 +330,62 @@ func TestIssueTypeStyle(t *testing.T) {
 	admin.call("DELETE", path, nil, 204, nil)
 }
 
+func TestPriorityIcon(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	var p catalogueItem
+	admin.call("POST", "/api/admin/priorities", map[string]any{"name": unique("Bloquant "), "icon": "blocker"}, 201, &p)
+	path := "/api/admin/priorities/" + p.id()
+	t.Cleanup(func() { admin.do("DELETE", path, nil) })
+	iconOf := func() string {
+		t.Helper()
+		for _, c := range catalogue(t, admin, "priorities") {
+			if c.id() == p.id() {
+				if c.Icon == nil {
+					return "<unset>"
+				}
+				return *c.Icon
+			}
+		}
+		t.Fatalf("%s not listed", p.id())
+		return ""
+	}
+	// The session catalogue, as the interface gets it.
+	session := func() any {
+		t.Helper()
+		var meta struct {
+			Priorities []map[string]any `json:"priorities"`
+		}
+		admin.get("/api/meta", &meta)
+		for _, c := range meta.Priorities {
+			if c["id"] == p.id() {
+				return c["icon"]
+			}
+		}
+		t.Fatalf("%s not in the session catalogue", p.id())
+		return nil
+	}
+	if got := iconOf(); got != "blocker" {
+		t.Errorf("created with icon %s, want blocker", got)
+	}
+	admin.call("PATCH", path, map[string]any{"icon": "lowest"}, 200, nil)
+	if got := iconOf(); got != "lowest" {
+		t.Errorf("icon %s, want lowest", got)
+	}
+	if got := session(); got != "lowest" {
+		t.Errorf("session icon %v, want lowest", got)
+	}
+	for _, body := range []map[string]any{{"icon": "rocket"}, {"icon": "unicorn"}, {"icon": 3}} {
+		admin.call("PATCH", path, body, 400, nil)
+	}
+	admin.call("PATCH", path, map[string]any{"icon": ""}, 200, nil)
+	if got := iconOf(); got != "<unset>" {
+		t.Errorf("icon after clearing: %s, want unset", got)
+	}
+	if got := session(); got != nil {
+		t.Errorf("session icon after clearing: %v, want unset", got)
+	}
+}
+
 func TestResolutions(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	paul := login(t, "paul.martin", jirafixture.Password)

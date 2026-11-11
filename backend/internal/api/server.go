@@ -618,6 +618,7 @@ type priorityRef struct {
 	ID      string   `json:"id"`
 	Name    string   `json:"name"`
 	Color   string   `json:"color,omitempty"`
+	Icon    string   `json:"icon,omitempty"`    // unset: the glyph of its position
 	Default bool     `json:"default,omitempty"` // of issues created without one
 	Seed    i18n.Key `json:"seed,omitempty"`
 }
@@ -701,9 +702,9 @@ func (s *Server) catalogue(ctx context.Context) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = sqlq.Each(ctx, s.db, `SELECT id, name, COALESCE(color, ''), is_default FROM priorities ORDER BY position, name`, func(rows *sql.Rows) error {
+	err = sqlq.Each(ctx, s.db, `SELECT id, name, COALESCE(color, ''), COALESCE(icon, ''), is_default FROM priorities ORDER BY position, name`, func(rows *sql.Rows) error {
 		var v priorityRef
-		if err := rows.Scan(&v.ID, &v.Name, &v.Color, &v.Default); err != nil {
+		if err := rows.Scan(&v.ID, &v.Name, &v.Color, &v.Icon, &v.Default); err != nil {
 			return err
 		}
 		v.Seed = i18n.Match(v.Name, seededPriorities...)

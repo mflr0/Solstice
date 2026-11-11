@@ -5,11 +5,29 @@ import {
   initials,
   isImage,
   isIssueKey,
+  priorityIcon,
   priorityLevel,
   projectOfIssueKey,
   typeLetter,
   typeTone,
 } from '../../src/core/marks.js';
+
+describe('priorityIcon', () => {
+  it('shows the chosen icon wherever the priority sits', () => {
+    expect(priorityIcon('blocker', 4, 5)).toBe('blocker');
+    expect(priorityIcon('lowest', 0, 5)).toBe('lowest');
+    expect(priorityIcon('trivial', -1, 5)).toBe('trivial');
+  });
+
+  it('falls back to the level of the position without one', () => {
+    expect([0, 2, 4].map((i) => priorityIcon(undefined, i, 5))).toEqual([
+      'highest',
+      'medium',
+      'lowest',
+    ]);
+    expect(priorityIcon(undefined, 1, 3)).toBe(priorityLevel(1, 3));
+  });
+});
 
 describe('priorityLevel', () => {
   it("maps Jira's five priorities one to one", () => {

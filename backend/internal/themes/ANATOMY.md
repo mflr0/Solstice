@@ -324,8 +324,10 @@ through `--mark` (`--mark-solid` when filled, `--mark-on-tint` when subtle). To
 keep the type's colour, clamp its lightness into a variable that is unset
 without one, as the bundled skins do with `--type-ink`, and keep 3:1 against
 `--paper` and `--paper-raised`. `.priority-mark` >
-`.glyph[data-level='highest|high|medium|low|lowest|other']` (its colour comes
-from the server in an inline `--priority-color`, drawn with
+`.glyph[data-level='highest|high|medium|low|lowest|other']`, or
+`data-level='blocker|critical|urgent|minor|trivial'` (drawn `⊘ ! !! · ○`):
+the icon an admin chose for the priority, else the level of its position (its
+colour comes from the server in an inline `--priority-color`, drawn with
 `color: var(--priority-color, var(--ink-soft))`: override `color`, or mix the
 variable). `.avatar` (initials; `.avatar-large` on the person page).
 

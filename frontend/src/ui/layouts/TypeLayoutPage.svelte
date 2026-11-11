@@ -8,6 +8,7 @@
     LayoutForm,
   } from '../../core/admin-types.js';
   import { paths } from '../../core/route.js';
+  import type { TypeIcon } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { tabs } from '../../lib/actions.js';
   import { adminApi } from '../../lib/admin-api.js';
@@ -145,7 +146,7 @@
               subtask: !!type.subtask,
               ...(type.color ? { color: type.color } : {}),
               ...(type.fill ? { fill: type.fill } : {}),
-              ...(type.icon ? { icon: type.icon } : {}),
+              ...(type.icon ? { icon: type.icon as TypeIcon } : {}),
             }}
             asStored
           /></span
