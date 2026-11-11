@@ -4,12 +4,14 @@ package api
 // can pick without knowing them by heart.
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"solstice/internal/issue"
+	"solstice/internal/perm"
 	"solstice/internal/sqlq"
 )
 
@@ -243,6 +245,7 @@ func (s *Server) projectParts(table string) handler {
 var facetColumns = map[string]string{
 	"project": "p.pkey", "status": "i.status_id", "type": "i.issue_type_id", "priority": "i.priority_id",
 	"resolution": "i.resolution_id", "assignee": "i.assignee_id", "reporter": "i.reporter_id",
+	"epic": "i.epic_id",
 }
 
 // facets counts, for the search given as for /api/issues (jql or q,
@@ -309,5 +312,41 @@ func (s *Server) facets(w http.ResponseWriter, r *http.Request) error {
 	for id, u := range found {
 		users[strconv.FormatInt(id, 10)] = u
 	}
-	return writeJSON(w, http.StatusOK, map[string]any{"total": total, "facets": out, "users": users})
+	epics, err := s.facetEpics(ctx, sub, out["epic"])
+	if err != nil {
+		return err
+	}
+	return writeJSON(w, http.StatusOK, map[string]any{"total": total, "facets": out, "users": users, "epics": epics})
+}
+
+type epicRef struct {
+	Key     string `json:"key"`
+	Summary string `json:"summary"`
+}
+
+// facetEpics names the counted epics the user sees, by id.
+func (s *Server) facetEpics(ctx context.Context, sub *perm.Subject, counts map[string]int) (map[string]epicRef, error) {
+	out := map[string]epicRef{}
+	var ids []any
+	for v := range counts {
+		if id, err := strconv.ParseInt(v, 10, 64); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	vis, args := sub.VisibleSQL("i")
+	err := sqlq.Each(ctx, s.db, `SELECT i.id, p.pkey, i.num, i.summary FROM issues i JOIN projects p ON p.id = i.project_id
+		WHERE `+vis+` AND i.id IN (`+sqlq.Marks(len(ids))+`)`, func(rows *sql.Rows) error {
+		var id, num int64
+		var e epicRef
+		if err := rows.Scan(&id, &e.Key, &num, &e.Summary); err != nil {
+			return err
+		}
+		e.Key += "-" + strconv.FormatInt(num, 10)
+		out[strconv.FormatInt(id, 10)] = e
+		return nil
+	}, append(args, ids...)...)
+	return out, err
 }

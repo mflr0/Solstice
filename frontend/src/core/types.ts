@@ -529,6 +529,8 @@ export interface Facets {
   facets: Record<string, Record<string, number>>;
   /** The people counted (assignee, reporter), by id. */
   users: Record<string, UserRef>;
+  /** The epics counted that the user sees, by id. */
+  epics: Record<string, { key: string; summary: string }>;
 }
 
 /** An epic offered as a search value (GET /api/epics). */
