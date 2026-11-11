@@ -209,7 +209,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectNameTaken:           "Un progetto si chiama già «%s».",
 	ProjectLeadInactive:        "Il responsabile deve essere un account attivo.",
 	ProjectCategoryNotFound:    "Categoria non trovata.",
-	ProjectTemplateUnknown:     "Modello sconosciuto: software o simple.",
+	ProjectWorkflowUnknown:     "Workflow sconosciuto: scegli un workflow globale.",
 	ProjectAssigneeTypeUnknown: "Assegnazione predefinita: unassigned o lead.",
 	ProjectAssigneeNoLead:      "I nuovi ticket non possono andare al responsabile: il progetto non ne ha uno.",
 	ProjectIssueTypeRequired:   "Scegli almeno un tipo di ticket che non sia un sotto-task.",

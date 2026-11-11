@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"solstice/internal/i18n"
 )
 
 // category is a project category.
@@ -20,7 +22,7 @@ var categories = []category{
 // seedProject is a project of the seed, with its components and versions.
 type seedProject struct {
 	key, name, description string
-	template               string // software or simple (business)
+	workflow               i18n.Message // name of the seeded global workflow it copies; none for the default
 	lead                   string
 	category               string // "" for none
 	archived               bool
@@ -38,15 +40,16 @@ type seedVersion struct {
 }
 
 var projects = []seedProject{
-	{Project, "Demo", "Sample project of the development database.", "software", "alice", "Products", false,
+	{Project, "Demo", "Sample project of the development database.", i18n.Message{}, "alice", "Products", false,
 		[]seedComponent{{"Backend", "hans"}, {"Frontend", "marie"}, {"Documentation", ""}},
 		[]seedVersion{{"0.9", -150, true, true}, {"1.0", -60, true, false}, {"1.1", 30, false, false}}},
-	{"MOB", "Mobile app", "The phone application.", "software", "hans", "Products", false,
+	{"MOB", "Mobile app", "The phone application.", i18n.Message{}, "hans", "Products", false,
 		[]seedComponent{{"iOS", "giulia"}, {"Android", "priya"}},
 		[]seedVersion{{"2.0", -20, true, false}, {"2.1", 45, false, false}}},
-	{"OPS", "Office operations", "Purchases, rooms and the office's daily running.", "simple", "marie", "Internal", false,
+	{"OPS", "Office operations", "Purchases, rooms and the office's daily running.",
+		i18n.M(i18n.DefaultWorkflowSimple), "marie", "Internal", false,
 		[]seedComponent{{"Purchasing", "marie"}, {"Facilities", "tom"}}, nil},
-	{"OLD", "Legacy portal", "The customer portal before the rewrite, kept for its history.", "software", "tom", "", true,
+	{"OLD", "Legacy portal", "The customer portal before the rewrite, kept for its history.", i18n.Message{}, "tom", "", true,
 		[]seedComponent{{"Web", "tom"}},
 		[]seedVersion{{"3.4", -400, true, false}}},
 }
@@ -90,14 +93,37 @@ func ensureCategory(ctx context.Context, conn *sql.DB, admin *client, c category
 	return out.ID, nil
 }
 
+// globalWorkflow finds a seeded global workflow by its name in any language:
+// the instance's language named it.
+func globalWorkflow(ctx context.Context, conn *sql.DB, name i18n.Message) (int64, error) {
+	var names []any
+	for _, lang := range i18n.Locales {
+		names = append(names, name.In(lang))
+	}
+	var id int64
+	err := conn.QueryRowContext(ctx, `SELECT id FROM workflows WHERE project_id IS NULL AND name IN (?`+
+		strings.Repeat(", ?", len(names)-1)+`) ORDER BY id LIMIT 1`, names...).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("no global workflow %s", name.Key)
+	}
+	return id, err
+}
+
 func ensureSeedProject(ctx context.Context, conn *sql.DB, admin *client, p seedProject, ids, cats map[string]int64,
 	say func(string, ...any)) error {
 	var id int64
 	var archived bool
 	err := conn.QueryRowContext(ctx, `SELECT id, archived FROM projects WHERE pkey = ?`, p.key).Scan(&id, &archived)
 	if errors.Is(err, sql.ErrNoRows) {
-		in := map[string]any{"key": p.key, "name": p.name, "description": p.description, "template": p.template,
+		in := map[string]any{"key": p.key, "name": p.name, "description": p.description,
 			"lead": ids[p.lead], "access": map[string]any{"holder": "everyone"}}
+		if p.workflow.Key != "" {
+			wf, err := globalWorkflow(ctx, conn, p.workflow)
+			if err != nil {
+				return err
+			}
+			in["workflow"] = wf
+		}
 		if p.category != "" {
 			in["category"] = cats[p.category]
 		}

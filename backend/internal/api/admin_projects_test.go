@@ -30,22 +30,23 @@ func TestKeyConflict(t *testing.T) {
 	}
 }
 
-// A template's statuses are named in the language given, each name its own:
+// A seeded workflow's statuses are named in the language given, each name its own:
 // statuses are reused by name, whatever the case.
 func TestTemplateStatuses(t *testing.T) {
 	var names []string
-	for _, st := range templateStatuses(projectTemplates["software"].statuses, "fr") {
+	for _, st := range templateStatuses(globalWorkflowSeeds[0].statuses, "fr") {
 		names = append(names, st.name)
 	}
 	if want := []string{"À faire", "En cours", "En revue", "Terminé"}; !slices.Equal(names, want) {
-		t.Errorf("software template in French: %q, want %q", names, want)
+		t.Errorf("software workflow in French: %q, want %q", names, want)
 	}
 	for _, lang := range i18n.Locales {
-		for tmpl, p := range projectTemplates {
+		for _, wf := range globalWorkflowSeeds {
+			tmpl := wf.name.In("en")
 			seen := map[string]bool{}
-			for _, st := range templateStatuses(p.statuses, lang) {
+			for _, st := range templateStatuses(wf.statuses, lang) {
 				if k := strings.ToLower(st.name); seen[k] {
-					t.Errorf("%s template in %s: %q twice", tmpl, lang, st.name)
+					t.Errorf("%s workflow in %s: %q twice", tmpl, lang, st.name)
 				} else {
 					seen[k] = true
 				}

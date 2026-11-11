@@ -103,7 +103,8 @@ export type AccessKind = 'lead' | 'group' | 'everyone';
 export interface ProjectForm {
   name: string;
   key: string;
-  template: 'software' | 'simple';
+  /** The global workflow to copy; null for the default. */
+  workflow: number | null;
   lead: UserRef | null;
   category: number | null;
   access: AccessKind;
@@ -136,7 +137,7 @@ export function projectPayload(f: ProjectForm) {
   return {
     key: f.key,
     name: f.name.trim(),
-    template: f.template,
+    ...(f.workflow !== null ? { workflow: f.workflow } : {}),
     ...(description ? { description } : {}),
     lead: f.lead?.id ?? null,
     ...(f.issueTypes ? { issueTypes: f.issueTypes } : {}),

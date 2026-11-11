@@ -15,6 +15,11 @@ vi.mock('../../src/lib/admin-api.js', () => ({
   adminApi: {
     categories: () => Promise.resolve([]),
     groups: () => Promise.resolve([]),
+    workflows: () =>
+      Promise.resolve([
+        { id: 5, name: 'Software', default: true, statuses: [{ id: '1', name: 'To Do' }] },
+        { id: 6, name: 'Simple', default: false, statuses: [{ id: '1', name: 'To Do' }] },
+      ]),
     checkKey: () => Promise.resolve({ available: true }),
     createProject,
   },
@@ -93,6 +98,16 @@ async function submit(name: string) {
   document.querySelector<HTMLFormElement>('.project-form')!.requestSubmit();
   await settle();
 }
+
+describe('ProjectDialog workflow', () => {
+  it('lists the global workflows and sends the default one, preselected', async () => {
+    createProject.mockResolvedValue({ id: 1, key: 'DEMO' });
+    await open(task);
+    expect(document.body.textContent).toContain('Software');
+    await submit('Demo');
+    expect(createProject).toHaveBeenCalledWith(expect.objectContaining({ workflow: 5 }));
+  });
+});
 
 const errorNotes = () => notes.filter((n) => n.kind === 'error').map((n) => n.text);
 

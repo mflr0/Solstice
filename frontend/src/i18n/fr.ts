@@ -2873,10 +2873,6 @@ export const fr: Messages = {
     keyChecking: 'Vérification…',
     keyFree: (key: string) => `${key} est disponible.`,
     template: 'Workflow de départ',
-    templates: {
-      software: 'Logiciel : À faire, En cours, En revue, Terminé',
-      simple: 'Simple : À faire, En cours, Terminé',
-    },
     leadHint: 'Facultatif, vous par défaut. Le responsable a tous les droits dans le projet.',
     description: 'Description',
     access: 'Qui peut travailler dans le projet',

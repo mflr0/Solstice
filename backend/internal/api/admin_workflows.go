@@ -39,6 +39,26 @@ var globalWorkflowSeeds = []struct {
 		{i18n.M(i18n.DefaultStatusInProgress), issue.Doing}, {i18n.M(i18n.DefaultStatusDone), issue.Done}}},
 }
 
+type templateStatus struct {
+	name     i18n.Message
+	category issue.StatusCategory
+}
+
+// projectStatus is a status of a new project, named in the instance's language.
+type projectStatus struct {
+	name     string
+	category issue.StatusCategory
+}
+
+// templateStatuses names the statuses of a template in lang.
+func templateStatuses(statuses []templateStatus, lang string) []projectStatus {
+	out := make([]projectStatus, len(statuses))
+	for i, st := range statuses {
+		out[i] = projectStatus{st.name.In(lang), st.category}
+	}
+	return out
+}
+
 const globalWorkflowsLock = "solstice-global-workflows"
 
 // seedGlobalWorkflows creates the global workflows, named in the instance's

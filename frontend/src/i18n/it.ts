@@ -2880,10 +2880,6 @@ export const it: Messages = {
     keyChecking: 'Verifica in corso…',
     keyFree: (key: string) => `${key} è disponibile.`,
     template: 'Workflow iniziale',
-    templates: {
-      software: 'Software: Da fare, In corso, In revisione, Completato',
-      simple: 'Semplice: Da fare, In corso, Completato',
-    },
     leadHint:
       'Facoltativo, per impostazione predefinita tu. Il responsabile ha tutti i diritti nel progetto.',
     description: 'Descrizione',

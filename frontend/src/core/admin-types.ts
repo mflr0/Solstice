@@ -445,8 +445,6 @@ export interface ProjectGroup {
 
 /* Projects ------------------------------------------------------------------ */
 
-export type ProjectTemplate = 'software' | 'simple';
-
 export type ProjectAccess = { holder: 'group'; id: number } | { holder: 'everyone' } | null;
 
 export interface ProjectInput {
@@ -456,7 +454,8 @@ export interface ProjectInput {
   /** Null for no lead; left out, the creator. */
   lead?: number | null;
   category?: number | null;
-  template: ProjectTemplate;
+  /** The global workflow it starts from a copy of; left out, the default. */
+  workflow?: number;
   access?: ProjectAccess;
   issueTypes?: string[];
   defaultAssignee?: 'unassigned' | 'lead' | 'reporter';

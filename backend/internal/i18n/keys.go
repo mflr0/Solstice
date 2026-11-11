@@ -230,7 +230,7 @@ const (
 	ProjectNameTaken           Key = "ProjectNameTaken"
 	ProjectLeadInactive        Key = "ProjectLeadInactive"
 	ProjectCategoryNotFound    Key = "ProjectCategoryNotFound"
-	ProjectTemplateUnknown     Key = "ProjectTemplateUnknown"
+	ProjectWorkflowUnknown     Key = "ProjectWorkflowUnknown"
 	ProjectAssigneeTypeUnknown Key = "ProjectAssigneeTypeUnknown"
 	ProjectAssigneeNoLead      Key = "ProjectAssigneeNoLead"
 	ProjectIssueTypeRequired   Key = "ProjectIssueTypeRequired"

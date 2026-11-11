@@ -298,7 +298,7 @@ Permission rules, of a project or global, are in section 16.
 {
   "key": "WEB", "name": "Site web", "description": "…",
   "lead": 12, "category": 3,
-  "template": "software",
+  "workflow": 7,
   "access": {"holder": "group", "id": 4},
   "issueTypes": ["10001", "10002"],
   "defaultAssignee": "unassigned"
@@ -312,10 +312,11 @@ Permission rules, of a project or global, are in section 16.
 - `defaultAssignee`: `unassigned` (default), `lead` or `reporter`; `lead`
   without a lead is a 400. `reporter` sends a new issue to its reporter when
   they may be assigned issues in the project, otherwise leaves it unassigned.
-- `template`: `software` (statuses To Do / In Progress / In Review / Done) or
-  `simple` (To Do / In Progress / Done), named in the instance's default
-  language. Statuses are reused by name (any case) or created; the project
-  gets one workflow where any status can be reached from any other.
+- `workflow`: the id of a global workflow (see Global workflows), default the
+  default one; an unknown id or a project's workflow is a 400. The project
+  gets a copy of its statuses, transitions and initial status as its default
+  workflow, `Workflow <KEY>`; later edits of the global workflow leave the
+  copy alone. `template` is gone: sending it is a 400, like any unknown field.
 - `access`: who else works in the project — `{"holder": "group", "id"}`,
   `{"holder": "everyone"}`, or `null`/absent (only the lead).
   That holder gets browse, create, edit, comment, transition, assign,

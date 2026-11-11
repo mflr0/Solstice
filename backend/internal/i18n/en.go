@@ -207,7 +207,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	ProjectNameTaken:           "A project is already named “%s”.",
 	ProjectLeadInactive:        "The lead must be an active account.",
 	ProjectCategoryNotFound:    "Category not found.",
-	ProjectTemplateUnknown:     "Unknown template: software or simple.",
+	ProjectWorkflowUnknown:     "Unknown workflow: choose a global workflow.",
 	ProjectAssigneeTypeUnknown: "Default assignment: unassigned or lead.",
 	ProjectAssigneeNoLead:      "New issues can't go to the project lead: the project has no lead.",
 	ProjectIssueTypeRequired:   "Choose at least one issue type that is not a sub-task.",

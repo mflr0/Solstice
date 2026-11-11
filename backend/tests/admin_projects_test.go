@@ -4,14 +4,17 @@ package tests
 // deletion, and their components and versions.
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"solstice/internal/i18n"
 	"solstice/internal/jirafixture"
 )
 
@@ -37,6 +40,126 @@ func TestNewProjectKeyUnique(t *testing.T) {
 			t.Fatalf("newProjectKey() = %q, seen before or not a valid key", key)
 		}
 		seen[key] = true
+	}
+}
+
+// seededWorkflow is the global workflow seeded under name, in whatever
+// language the instance had then.
+func seededWorkflow(t *testing.T, admin *client, name i18n.Key) globalWorkflow {
+	t.Helper()
+	var list []globalWorkflow
+	admin.call("GET", "/api/admin/workflows", nil, 200, &list)
+	for _, w := range list {
+		for _, lang := range i18n.Locales {
+			if w.Name == i18n.M(name).In(lang) {
+				return w
+			}
+		}
+	}
+	t.Fatalf("no global workflow %s: %+v", name, list)
+	return globalWorkflow{}
+}
+
+// workflowShape is what a copy of a workflow keeps: its initial status, its
+// statuses in order and its transitions.
+func workflowShape(w globalWorkflow) string {
+	out := "initial " + w.Initial.ID + "; statuses"
+	for _, st := range w.Statuses {
+		out += " " + st.ID
+	}
+	out += "; transitions"
+	for _, tr := range w.Transitions {
+		from := "*"
+		if tr.From != nil {
+			from = tr.From.ID
+		}
+		out += fmt.Sprintf(" %s:%s>%s", tr.Name, from, tr.To.ID)
+	}
+	return out
+}
+
+// projectWorkflow is the only workflow of a new project.
+func projectWorkflow(t *testing.T, admin *client, key string) globalWorkflow {
+	t.Helper()
+	var out struct{ Workflows []globalWorkflow }
+	admin.call("GET", "/api/projects/"+key+"/workflows", nil, 200, &out)
+	if len(out.Workflows) != 1 || !out.Workflows[0].Default || out.Workflows[0].Name != "Workflow "+key {
+		t.Fatalf("workflows of %s: %+v", key, out.Workflows)
+	}
+	return out.Workflows[0]
+}
+
+// A new project starts from a copy of a global workflow, the default one
+// unless it names another; later edits of the global workflow leave the copy
+// alone.
+func TestProjectWorkflowFromGlobal(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	var list []globalWorkflow
+	admin.call("GET", "/api/admin/workflows", nil, 200, &list)
+	i := slices.IndexFunc(list, func(w globalWorkflow) bool { return w.Default })
+	if i < 0 {
+		t.Fatalf("no default global workflow: %+v", list)
+	}
+	def := list[i]
+
+	key := newProject(t, admin, nil)
+	if got, want := workflowShape(projectWorkflow(t, admin, key)), workflowShape(def); got != want {
+		t.Errorf("project with no workflow:\n%s\nwant the default's\n%s", got, want)
+	}
+	var details struct {
+		Template *string
+		Workflow struct {
+			ID   int64
+			Name string
+		}
+	}
+	id := strconv.FormatInt(dbInt(t, `SELECT id FROM projects WHERE pkey = ?`, key), 10)
+	if d := auditDetails(t, "project.create", id); json.Unmarshal([]byte(d), &details) != nil ||
+		details.Workflow.ID != def.ID || details.Workflow.Name != def.Name || details.Template != nil {
+		t.Errorf("audit of the creation: %s", d)
+	}
+
+	simple := seededWorkflow(t, admin, i18n.DefaultWorkflowSimple)
+	key = newProject(t, admin, map[string]any{"workflow": simple.ID})
+	if got, want := workflowShape(projectWorkflow(t, admin, key)), workflowShape(simple); got != want {
+		t.Errorf("project from %s:\n%s\nwant\n%s", simple.Name, got, want)
+	}
+
+	var own struct{ ID int64 }
+	tag := fmt.Sprintf("check902-%d", time.Now().UnixNano())
+	admin.call("POST", "/api/admin/workflows", map[string]any{"name": tag}, 201, &own)
+	path := fmt.Sprintf("/api/admin/workflows/%d", own.ID)
+	t.Cleanup(func() { admin.do("DELETE", path, nil) })
+	admin.call("GET", "/api/admin/workflows", nil, 200, &list)
+	custom := *globalWorkflowByID(list, own.ID)
+	key = newProject(t, admin, map[string]any{"workflow": own.ID})
+	before := workflowShape(projectWorkflow(t, admin, key))
+	if want := workflowShape(custom); before != want {
+		t.Errorf("project from %s:\n%s\nwant\n%s", tag, before, want)
+	}
+	// The global workflow loses its last status; the project keeps it.
+	body := custom.put()
+	statuses := body["statuses"].([]string)
+	last := statuses[len(statuses)-1]
+	body["statuses"] = statuses[:len(statuses)-1]
+	body["transitions"] = slices.DeleteFunc(body["transitions"].([]map[string]any), func(tr map[string]any) bool {
+		from, _ := tr["from"].(*string)
+		return tr["to"] == last || (from != nil && *from == last)
+	})
+	if body["initial"] == last {
+		body["initial"] = statuses[0]
+	}
+	admin.call("PUT", path, body, 200, nil)
+	if after := workflowShape(projectWorkflow(t, admin, key)); after != before {
+		t.Errorf("after editing the global workflow, the project's is\n%s\nwas\n%s", after, before)
+	}
+
+	projectWF := dbInt(t, `SELECT id FROM workflows WHERE project_id IS NOT NULL ORDER BY id LIMIT 1`)
+	for _, wf := range []any{int64(-1), int64(1 << 40), projectWF} {
+		in := map[string]any{"key": newProjectKey(), "name": unique("x "), "workflow": wf}
+		if status, body := admin.do("POST", "/api/projects", in); status != 400 {
+			t.Errorf("create with workflow %v: %d %s, want 400", wf, status, body)
+		}
 	}
 }
 
@@ -98,7 +221,7 @@ func TestProjectLifecycle(t *testing.T) {
 		{map[string]any{"key": "DEMO", "name": "x"}, 409},
 		{map[string]any{"key": newProjectKey(), "name": ""}, 400},
 		{map[string]any{"key": newProjectKey(), "name": pick(t, `SELECT name FROM projects WHERE pkey = 'DEMO'`)}, 409},
-		{map[string]any{"key": newProjectKey(), "name": "x", "template": "kanban"}, 400},
+		{map[string]any{"key": newProjectKey(), "name": "x", "template": "software"}, 400}, // removed field
 		{map[string]any{"key": newProjectKey(), "name": "x", "access": map[string]any{"holder": "planet"}}, 400},
 		{map[string]any{"key": newProjectKey(), "name": "x", "lead": userID(t, "emma.morel")}, 400}, // deactivated
 		{map[string]any{"key": newProjectKey(), "name": "x", "defaultAssignee": "someone"}, 400},
@@ -123,7 +246,8 @@ func TestProjectLifecycle(t *testing.T) {
 	admin.call("POST", "/api/admin/project-categories", map[string]any{"name": strings.ToUpper(catName)}, 409, nil)
 	paul.call("POST", "/api/admin/project-categories", map[string]any{"name": "x"}, 403, nil)
 
-	key := newProject(t, admin, map[string]any{"template": "simple", "category": cat.ID, "description": "Pour les tests"})
+	key := newProject(t, admin, map[string]any{"workflow": seededWorkflow(t, admin, i18n.DefaultWorkflowSimple).ID,
+		"category": cat.ID, "description": "Pour les tests"})
 	var project struct {
 		Project struct {
 			Key        string
@@ -146,7 +270,7 @@ func TestProjectLifecycle(t *testing.T) {
 	}
 	admin.call("GET", "/api/projects/"+key+"/workflows", nil, 200, &wf)
 	if len(wf.Workflows) != 1 || len(wf.Workflows[0].Statuses) != 3 || len(wf.Workflows[0].Transitions) != 3 {
-		t.Errorf("simple template's workflow: %+v", wf)
+		t.Errorf("simple workflow's copy: %+v", wf)
 	}
 	var cats []struct {
 		ID       int64
