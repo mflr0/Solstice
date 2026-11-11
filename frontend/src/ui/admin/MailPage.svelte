@@ -8,7 +8,7 @@
     mailProblems,
     type MailForm,
   } from '../../core/admin-forms.js';
-  import type { MailEntry, MailQueue, MailSecurity } from '../../core/admin-types.js';
+  import type { MailEntry, MailField, MailQueue, MailSecurity } from '../../core/admin-types.js';
   import { formatNumber } from '../../i18n/format.js';
   import { formatDateTime, relative, t } from '../../i18n/t.js';
   import { pinnedHeight } from '../../lib/actions.js';
@@ -27,6 +27,17 @@
 
   const SECURITIES: MailSecurity[] = ['starttls', 'tls', 'none'];
 
+  const CONFIG_KEYS: Record<MailField, string> = {
+    enabled: 'SOLSTICE_MAIL_ENABLED',
+    host: 'SOLSTICE_MAIL_HOST',
+    port: 'SOLSTICE_MAIL_PORT',
+    security: 'SOLSTICE_MAIL_SECURITY',
+    username: 'SOLSTICE_MAIL_USERNAME',
+    password: 'SOLSTICE_MAIL_PASSWORD',
+    from: 'SOLSTICE_MAIL_FROM',
+    fromName: 'SOLSTICE_MAIL_FROMNAME',
+  };
+
   let settings = $state<MailSettingsReply | null>(null);
   let form = $state<MailForm | null>(null);
   let saved = $state('');
@@ -44,6 +55,7 @@
   let queueError = $state('');
   let retrying = $state(false);
 
+  const fixed = (field: MailField) => settings?.fromConfig.includes(field) ?? false;
   const dirty = $derived(form !== null && JSON.stringify(form) !== saved);
   const problems = $derived(form ? mailProblems(form, settings ?? undefined) : {});
   const shown = (field: 'host' | 'port' | 'from' | 'password') =>
@@ -101,7 +113,7 @@
     }
     saving = true;
     try {
-      adopt(await adminApi.saveMail(mailPayload(form)));
+      adopt(await adminApi.saveMail(mailPayload(form, settings?.fromConfig)));
       // Whether links can be e-mailed (sign-in page, users) follows these settings.
       void publicSettings.load();
       notify(t.mailAdmin.saved);
@@ -156,6 +168,14 @@
   const kindLabel = (k: string) => (t.mailAdmin.kinds as Record<string, string>)[k] ?? k;
 </script>
 
+{#snippet fromConfig(field: MailField, label: string, value: string)}
+  <div class="field">
+    <span class="field-label">{label}</span>
+    <span class="fixed-value">{value}</span>
+    <span class="hint source">{t.mailAdmin.fromConfig(CONFIG_KEYS[field])}</span>
+  </div>
+{/snippet}
+
 <header class="page-head">
   <div>
     <p class="eyebrow">{t.adminArea.groups.integrations}</p>
@@ -179,127 +199,165 @@
   {/if}
   <form class="settings-form" bind:this={formEl} onsubmit={submit} novalidate>
     <h2 class="section-title">{t.mailAdmin.server}</h2>
-    <label class="check">
-      <input class="checkbox" type="checkbox" bind:checked={form.enabled} />
-      <span>{t.mailAdmin.enabled}</span>
-    </label>
-    <p class="form-hint">{t.mailAdmin.enabledHint}</p>
-
-    <div class="form-grid wide-first">
-      <label class="field">
-        <span>{t.mailAdmin.host}</span>
-        <input
-          class="input"
-          bind:value={form.host}
-          placeholder={t.mailAdmin.hostPlaceholder}
-          autocomplete="off"
-          spellcheck="false"
-          aria-invalid={!!shown('host')}
-          onblur={() => (touched.host = true)}
-        />
-        {#if shown('host')}<span class="field-error">{shown('host')}</span>{/if}
+    {#if fixed('enabled')}
+      {@render fromConfig(
+        'enabled',
+        t.mailAdmin.enabled,
+        settings.enabled ? t.mailAdmin.enabledOn : t.mailAdmin.enabledOff,
+      )}
+    {:else}
+      <label class="check">
+        <input class="checkbox" type="checkbox" bind:checked={form.enabled} />
+        <span>{t.mailAdmin.enabled}</span>
       </label>
-      <label class="field">
-        <span>{t.mailAdmin.port}</span>
-        <input
-          class="input"
-          inputmode="numeric"
-          bind:value={form.port}
-          aria-invalid={!!shown('port')}
-          onblur={() => (touched.port = true)}
-        />
-        {#if shown('port')}<span class="field-error">{shown('port')}</span>{/if}
-      </label>
-    </div>
+      <p class="form-hint">{t.mailAdmin.enabledHint}</p>
+    {/if}
 
-    <fieldset class="field choices">
-      <legend class="field-label">{t.mailAdmin.security}</legend>
-      {#each SECURITIES as s (s)}
-        <label class="check">
-          <input
-            type="radio"
-            name="security"
-            checked={form.security === s}
-            onchange={() => setSecurity(s)}
-          />
-          <span>{t.mailAdmin.securities[s]}</span>
-        </label>
-      {/each}
-    </fieldset>
-
-    <div class="form-grid">
-      <label class="field">
-        <span>{t.mailAdmin.username}</span>
-        <input class="input" bind:value={form.username} autocomplete="off" spellcheck="false" />
-        <span class="hint">{t.mailAdmin.usernameHint}</span>
-      </label>
-      <div class="field">
-        <span class="field-label" id="mail-password">{t.mailAdmin.password}</span>
-        {#if form.passwordAction === 'replace' || !settings.passwordSet}
-          <PasswordInput
-            bind:value={form.password}
-            aria-labelledby="mail-password"
-            autocomplete="new-password"
-            oninput={() => form && (form.passwordAction = 'replace')}
-          />
-          {#if settings.passwordSet}
-            <button
-              type="button"
-              class="link-btn small"
-              onclick={() => form && ((form.passwordAction = 'keep'), (form.password = ''))}
-              >{t.mailAdmin.keepPassword}</button
-            >
-          {/if}
-        {:else if form.passwordAction === 'remove'}
-          <p class="secret-note">
-            {t.mailAdmin.passwordRemoved}
-            <button
-              type="button"
-              class="link-btn"
-              onclick={() => form && (form.passwordAction = 'keep')}>{t.common.cancel}</button
-            >
-          </p>
-        {:else}
-          <p class="secret-note">
-            {t.mailAdmin.passwordSet}
-            <button
-              type="button"
-              class="link-btn"
-              onclick={() => form && (form.passwordAction = 'replace')}
-              >{t.mailAdmin.changePassword}</button
-            >
-            <button
-              type="button"
-              class="link-btn"
-              onclick={() => form && (form.passwordAction = 'remove')}
-              >{t.mailAdmin.removePassword}</button
-            >
-          </p>
-        {/if}
-        {#if shown('password')}<span class="field-error">{shown('password')}</span>{/if}
+    {#if fixed('host')}
+      <div class="form-grid wide-first">
+        {@render fromConfig('host', t.mailAdmin.host, settings.host || t.common.none)}
+        {@render fromConfig('port', t.mailAdmin.port, String(settings.port))}
       </div>
-    </div>
+      <div class="form-grid">
+        {@render fromConfig(
+          'security',
+          t.mailAdmin.security,
+          t.mailAdmin.securities[settings.security],
+        )}
+      </div>
+      <div class="form-grid">
+        {@render fromConfig('username', t.mailAdmin.username, settings.username || t.common.none)}
+        {@render fromConfig(
+          'password',
+          t.mailAdmin.password,
+          settings.passwordSet ? t.mailAdmin.passwordSet : t.mailAdmin.noPassword,
+        )}
+      </div>
+    {:else}
+      <div class="form-grid wide-first">
+        <label class="field">
+          <span>{t.mailAdmin.host}</span>
+          <input
+            class="input"
+            bind:value={form.host}
+            placeholder={t.mailAdmin.hostPlaceholder}
+            autocomplete="off"
+            spellcheck="false"
+            aria-invalid={!!shown('host')}
+            onblur={() => (touched.host = true)}
+          />
+          {#if shown('host')}<span class="field-error">{shown('host')}</span>{/if}
+        </label>
+        <label class="field">
+          <span>{t.mailAdmin.port}</span>
+          <input
+            class="input"
+            inputmode="numeric"
+            bind:value={form.port}
+            aria-invalid={!!shown('port')}
+            onblur={() => (touched.port = true)}
+          />
+          {#if shown('port')}<span class="field-error">{shown('port')}</span>{/if}
+        </label>
+      </div>
+
+      <fieldset class="field choices">
+        <legend class="field-label">{t.mailAdmin.security}</legend>
+        {#each SECURITIES as s (s)}
+          <label class="check">
+            <input
+              type="radio"
+              name="security"
+              checked={form.security === s}
+              onchange={() => setSecurity(s)}
+            />
+            <span>{t.mailAdmin.securities[s]}</span>
+          </label>
+        {/each}
+      </fieldset>
+
+      <div class="form-grid">
+        <label class="field">
+          <span>{t.mailAdmin.username}</span>
+          <input class="input" bind:value={form.username} autocomplete="off" spellcheck="false" />
+          <span class="hint">{t.mailAdmin.usernameHint}</span>
+        </label>
+        <div class="field">
+          <span class="field-label" id="mail-password">{t.mailAdmin.password}</span>
+          {#if form.passwordAction === 'replace' || !settings.passwordSet}
+            <PasswordInput
+              bind:value={form.password}
+              aria-labelledby="mail-password"
+              autocomplete="new-password"
+              oninput={() => form && (form.passwordAction = 'replace')}
+            />
+            {#if settings.passwordSet}
+              <button
+                type="button"
+                class="link-btn small"
+                onclick={() => form && ((form.passwordAction = 'keep'), (form.password = ''))}
+                >{t.mailAdmin.keepPassword}</button
+              >
+            {/if}
+          {:else if form.passwordAction === 'remove'}
+            <p class="secret-note">
+              {t.mailAdmin.passwordRemoved}
+              <button
+                type="button"
+                class="link-btn"
+                onclick={() => form && (form.passwordAction = 'keep')}>{t.common.cancel}</button
+              >
+            </p>
+          {:else}
+            <p class="secret-note">
+              {t.mailAdmin.passwordSet}
+              <button
+                type="button"
+                class="link-btn"
+                onclick={() => form && (form.passwordAction = 'replace')}
+                >{t.mailAdmin.changePassword}</button
+              >
+              <button
+                type="button"
+                class="link-btn"
+                onclick={() => form && (form.passwordAction = 'remove')}
+                >{t.mailAdmin.removePassword}</button
+              >
+            </p>
+          {/if}
+          {#if shown('password')}<span class="field-error">{shown('password')}</span>{/if}
+        </div>
+      </div>
+    {/if}
 
     <h2 class="section-title">{t.mailAdmin.sender}</h2>
     <div class="form-grid">
-      <label class="field">
-        <span>{t.mailAdmin.from}</span>
-        <input
-          class="input"
-          type="email"
-          bind:value={form.from}
-          placeholder={t.mailAdmin.fromPlaceholder}
-          spellcheck="false"
-          aria-invalid={!!shown('from')}
-          onblur={() => (touched.from = true)}
-        />
-        {#if shown('from')}<span class="field-error">{shown('from')}</span>{/if}
-      </label>
-      <label class="field">
-        <span>{t.mailAdmin.fromName}</span>
-        <input class="input" bind:value={form.fromName} placeholder={t.appName} />
-        <span class="hint">{t.mailAdmin.fromNameHint}</span>
-      </label>
+      {#if fixed('from')}
+        {@render fromConfig('from', t.mailAdmin.from, settings.from || t.common.none)}
+      {:else}
+        <label class="field">
+          <span>{t.mailAdmin.from}</span>
+          <input
+            class="input"
+            type="email"
+            bind:value={form.from}
+            placeholder={t.mailAdmin.fromPlaceholder}
+            spellcheck="false"
+            aria-invalid={!!shown('from')}
+            onblur={() => (touched.from = true)}
+          />
+          {#if shown('from')}<span class="field-error">{shown('from')}</span>{/if}
+        </label>
+      {/if}
+      {#if fixed('fromName')}
+        {@render fromConfig('fromName', t.mailAdmin.fromName, settings.fromName || t.appName)}
+      {:else}
+        <label class="field">
+          <span>{t.mailAdmin.fromName}</span>
+          <input class="input" bind:value={form.fromName} placeholder={t.appName} />
+          <span class="hint">{t.mailAdmin.fromNameHint}</span>
+        </label>
+      {/if}
     </div>
     <p class="form-hint">
       {settings.baseUrl ? t.mailAdmin.baseUrl(settings.baseUrl) : t.mailAdmin.baseUrlMissing}
@@ -466,6 +524,15 @@
   .problem {
     max-width: 45rem;
     margin-bottom: 22px;
+  }
+
+  .fixed-value {
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  .source {
+    font-style: italic;
   }
 
   .secret-note {

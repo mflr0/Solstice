@@ -437,7 +437,7 @@ func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) error {
 	if fixed.Sets("password") {
 		set = cfg.Password != ""
 	}
-	out := mailSettingsOut{Config: cfg, PasswordSet: set, FromConfig: slices.Concat([]string{}, fixed.Fields)}
+	out := mailSettingsOut{Config: cfg, PasswordSet: set, FromConfig: append([]string{}, fixed.Fields...)}
 	if credentialsInClear(cfg) {
 		out.Problem = mailProblemCredentialsNeedTLS
 	}
