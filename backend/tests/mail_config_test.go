@@ -61,7 +61,7 @@ func TestMailSettingsFromConfig(t *testing.T) {
 
 	// The server without the override still reads the stored settings.
 	env.login("admin", "admin").call("GET", "/api/admin/mail", nil, 200, &got)
-	if got.Host != env.smtp.Host || len(got.FromConfig) != 0 {
+	if got.Host != env.smtp.Host || got.FromConfig == nil || len(got.FromConfig) != 0 {
 		t.Errorf("without the override: %+v", got)
 	}
 }
