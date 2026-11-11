@@ -1,44 +1,48 @@
 ---
 name: solstice-issue
-description: Pick, claim and deliver one Solstice GitHub issue, coordinated with the other Claude sessions.
+description: Pick, claim and deliver one ticket of the Solstice tracker (project SOL on solstice.suolumi.fr), coordinated with the other Claude sessions.
 disable-model-invocation: true
-argument-hint: "[number] [label...]"
+argument-hint: "[SOL-N] [label or type...]"
 ---
 
-Work one issue of mflr0/Solstice from pick to merge. This skill holds the whole workflow, including what CLAUDE.md and memory also say. `pick.sh` sits next to this file.
+Work one ticket of the SOL project from pick to merge. Tickets live on https://solstice.suolumi.fr, handled with the `mcp__solstice__*` tools. Code and pull requests live on GitHub, mflr0/Solstice. This skill holds the whole workflow, including what CLAUDE.md and memory also say. `pick.sh` sits next to this file and does the git and pull-request steps.
 
 Every call re-reads the whole context, so make few of them: send independent calls in the same turn, and chain dependent shell steps with `&&` in one Bash call.
 
+`SOL-N` is the ticket, `N` its number: ports and record names below use `N`. Comments and descriptions are Jira wiki markup: `{{code}}`, `{code}…{code}`, `[text|url]`, `*bold*`.
+
 ## 1. Pick
 
-Run `pick.sh $ARGUMENTS`.
-- With a number, it checks that ticket only, whatever its assignee.
-- Without one, it lists open, unassigned tickets. It leaves out `enhancement` unless that is a filter, and other label words narrow the list.
-- Order: position in the ticket's "Tracked in #N" issue, then issue number.
-- It flags as blocked: tickets with a "Waits for #n" (in the body or on the tracker line) whose #n is an open issue or an unmerged PR, and tickets other than bugs that share an "In scope" file with an open bug. It lists tickets claimed by another session apart.
-- If nothing is free, it prints one line (`Nothing free: …`). Relay that line and stop: no per-ticket table.
-- It then prints the first free candidate in full, body and comments. Don't fetch it again.
+1. In one turn, two `search_issues` calls:
+   - Candidates: `project = SOL AND statusCategory != Done AND issuetype != Epic ORDER BY Rank ASC`, fields `summary, issuetype, status, labels, issuelinks, Epic Link`, `maxResults` 200.
+   - Open bugs: `project = SOL AND issuetype = Bug AND statusCategory != Done`, fields `description`.
+2. With `SOL-N` in `$ARGUMENTS`, check that ticket only. Otherwise keep the tickets in **To Do**. Leave out Stories unless `story` or `enhancement` is a filter. Other words narrow the list to tickets with that label or type.
+3. A ticket is **blocked** when an inward `is blocked by` link points to an issue whose status category isn't Done, or, unless it is a Bug, when its `In scope` line shares a path with an open bug's.
+4. **In Progress** tickets are claimed by another session. One is **stale**, and counts as To Do in its place, when both are true:
+   - its last status change to In Progress, from `get_issue` with `expand: ["changelog"]`, is more than 24 h old;
+   - `pick.sh --last-commit SOL-N` prints nothing, or a time more than 24 h old.
+   Check all of them in one turn.
+5. If nothing is free, say in one line how many are blocked and claimed, and stop: no per-ticket table.
+6. Otherwise `get_issue` the first free one, fields `summary, issuetype, labels, description, comment, issuelinks, Epic Link`, and check its `In scope` against the bugs' now. Read it for dependencies links can't show:
+   - Prose ("do the small-fixes ticket first", "after the typed-confirmation ticket", "Parked: needs … first"). Find the ticket they name.
+   - Its "Out of scope" and "Stop and say so" lines, for tickets that go first.
 
-Read it for dependencies the script can't see:
-- Prose ("do the small-fixes ticket first", "after the typed-confirmation ticket", "Parked: needs … first"). Find the ticket they name.
-- Its "Out of scope" and "Stop and say so" lines, for tickets that go first.
-
-If one names an open ticket or an unmerged PR, add it to the ticket's "Waits for #n" line (or add that line before "Tracked in") with `gh issue edit`, so `pick.sh` catches it next time. A ticket with any open dependency is out, even if only part of it depends on it. Don't scope it down: take the next free candidate (`pick.sh <number>` prints it in full). If none is left, say so in one line and stop.
+If one names an open ticket, link it with `link_issues` (type `Blocks`, `inwardIssue` the ticket that goes first, `outwardIssue` this one), so the next pick catches it. A ticket with any open dependency is out, even if only part of it depends on it. Don't scope it down: take the next free candidate. If none is left, say so in one line and stop.
 
 ## 2. Claim
 
-Choose a short `<topic>` for the branch, then run `pick.sh --start N <topic>`. It checks the main checkout has a local git identity, fetches, claims the ticket with the `in progress` label and creates the worktree `../Solstice-<topic>` on a new branch `v1.0/<topic>` from `origin/feat/v1.0`.
-- Exit 3: another session holds the ticket. Go back to step 1 with the next candidate. The label is the lock: don't message the other sessions.
-- No local identity: ask me, the global one is not for this repo.
+1. `get_transitions` on the ticket. If none leads to In Progress, another session holds it: go back to step 1 with the next candidate. The status is the lock: don't message the other sessions. A stale claim: first take the transition back to To Do, with a comment `Stale claim, taken over.`.
+2. `transition_issue` with the one leading to In Progress.
+3. Choose a short `<topic>` and run `pick.sh --start <topic>`. It checks the main checkout has a local git identity, fetches and creates the worktree `../Solstice-<topic>` on a new branch `v1.0/<topic>` from `origin/feat/v1.0`. No local identity: ask me, the global one is not for this repo.
 
-If the work is dropped at any point, run `pick.sh --release N`.
+If the work is dropped at any point, move the ticket back to To Do.
 
 ## 3. Plan
 
 - Before planning, read the code each "Stop and say so" condition points to, to see whether it is already met.
 - In the same first batch of reads, check the ticket's premises: each "In scope" path exists, and the data the change needs already reaches the code that draws it (e.g. a field the API must send). A wrong premise found now costs one call; found mid-edit, several.
 - A design linked as an Artifact: don't read the Artifact itself (its type instructions alone are thousands of tokens). Read the one artboard the ticket names, directly by `path` (`project/<Name>.dc.html`); list the files first only if the name isn't clear. Then `grep -n` the saved file for the part you need.
-- If the ticket leaves real design choices open (names, where code lives, sites outside the scope list, a stop condition already met), grill me with the `grilling` skill before editing. If a stop condition triggered it, comment the outcome on the ticket with `gh issue comment`.
+- If the ticket leaves real design choices open (names, where code lives, sites outside the scope list, a stop condition already met), grill me with the `grilling` skill before editing. If a stop condition triggered it, comment the outcome on the ticket with `add_comment`.
 - Otherwise, state the plan in two lines and start.
 - Ignore stop conditions about files under open pull requests.
 - Before trusting a claim that something is unused or dead, grep the code for it.
@@ -53,7 +57,7 @@ If the work is dropped at any point, run `pick.sh --release N`.
    - Interface: `(cd frontend && pnpm install --frozen-lockfile && pnpm format:check && pnpm lint && pnpm test && pnpm build)`
 5. Integration tests: run them myself, against a separate database pointed to by `SOLSTICE_TEST_DB`, never the dev `solstice` database. If auto mode blocks that (or `make e2e`), don't work around it: for a backend-only change, rely on the CI integration job and say so; otherwise ask me to run `! make e2e`.
 6. For a new test, see it fail with the code it covers broken, then restore the code.
-7. If a "Stop and say so in the ticket if" condition is met while editing, stop editing. Grill me with the `grilling` skill on what triggered it, with your recommendation. Then comment the outcome on the ticket with `gh issue comment`.
+7. If a "Stop and say so in the ticket if" condition is met while editing, stop editing. Grill me with the `grilling` skill on what triggered it, with your recommendation. Then comment the outcome on the ticket with `add_comment`.
 8. If the change needs a UI check (see step 5.1), do it yourself first; see "UI check" below.
 
 ### UI check
@@ -93,14 +97,16 @@ The `playwright` MCP server is pinned (`@playwright/mcp@0.0.83 --browser chromiu
 1. Choose the path:
    - **Needs a UI check** (it touches the frontend, or changes something the user sees that no test pins): `draft`.
    - **Nothing to check in the UI** (backend-only, covered by unit tests and CI integration tests): `ready`.
-2. Commit and ship in one Bash call: `git -C <worktree> add -A && git -C <worktree> commit -q -m "<subject>" && pick.sh --ship N <topic> draft|ready`.
+2. Commit and ship in one Bash call: `git -C <worktree> add -A && git -C <worktree> commit -q -m "<subject>" && pick.sh --ship SOL-N <topic> draft|ready`.
    - Commit once the work is done and verified. Split it into several commits only for several meaningful steps, and then pass `--title "<one-line summary>"`. Subject line only, no body, in the conventional-commit style of `git log` (e.g. `test(jirafixture): …`).
-   - `--ship` pushes the branch, opens the pull request against `feat/v1.0` with the commit subject as title and an empty description, and comments `Closes #N.` on it. The stale-claim check finds the pull request through this comment.
+   - `--ship` pushes the branch, opens the pull request against `feat/v1.0` with the commit subject as title and an empty description, and comments `Closes SOL-N.` on it. The stale-claim check finds the pull request through this comment. It doesn't close the ticket: GitHub doesn't know SOL.
+   - Then `add_remote_link` on the ticket: `object` `{"url": "<PR URL>", "title": "PR #<PR>"}`, `globalId` the PR URL, `relationship` `"implemented in"`.
    - Pass `--note "<text>"` to add to that comment any file changed outside the ticket's scope, and why.
 3. Then:
    - **Draft**: report what the UI check (step 4.8) verified, check by check, and what it found. Then ask me to test only what the browser couldn't judge (how it looks in a theme, a real screen reader). Give me the interface URL (`http://127.0.0.1:<19000+N>`), the login to use, and a direct link to each page to open, with the records to look at. Wait for my answer. If your UI check covered everything and nothing is left for me, go to step 4 without asking.
    - **Ready**: go to step 4 without asking.
-4. Merge, once it is ready, once I approve the draft ("good", "all good", "continue"; don't ask whether to merge), or once nothing is left for me to check. Stop any server of the UI check still running and delete the records it left, then run `pick.sh --finish N <PR> <topic>` with the Bash timeout at 600000. It marks a draft ready, waits for every CI check, merges the commit they ran on, closes the issue and ticks it in its tracker (`--done`), removes the worktree and the local and remote branch, and pulls `feat/v1.0` in the main checkout.
+4. Merge, once it is ready, once I approve the draft ("good", "all good", "continue"; don't ask whether to merge), or once nothing is left for me to check. Stop any server of the UI check still running and delete the records it left, then run `pick.sh --finish <PR> <topic>` with the Bash timeout at 600000. It marks a draft ready, waits for every CI check, merges the commit they ran on, removes the worktree and the local and remote branch, and pulls `feat/v1.0` in the main checkout.
+   - Once it merged: `transition_issue` to Done, with `fields` `{"resolution": {"name": "Done"}}` and `update` `{"comment": [{"add": {"body": "Done in [PR #<PR>|<PR URL>]."}}]}`. If that was the last open ticket of its epic, say so in the report: I close epics.
    - Exit 4: a check failed, or was still pending. Fix it with a new commit, push it (`git -C <worktree> push`), and run `--finish` again; or stop and tell me.
    - If it stops on anything else, fix the cause and run it again: it resumes after what is already done.
 5. Report in a few lines: the ticket, the PR, what the change does, what was verified, and anything left open. On a "continue", go back to step 1 for the next ticket.
