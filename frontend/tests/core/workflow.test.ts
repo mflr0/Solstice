@@ -8,6 +8,7 @@ import {
   byCategory,
   canDeleteGlobal,
   cell,
+  copySources,
   globalWorkflowsData,
   isDirty,
   makeDefaultInput,
@@ -399,5 +400,23 @@ describe('global workflows', () => {
     expect(input.statuses).toEqual(['10000', '3', '10002', '10001']);
     expect(input.transitions).toHaveLength(5);
     expect(input.transitions[0]).toEqual({ id: 1, name: 'Démarrer', from: '10000', to: '3' });
+  });
+});
+
+describe('copy sources', () => {
+  const labels = { project: 'This project', global: 'Global', defaultBadge: 'default' };
+  const data = { workflows: [software, bugs], issueTypes: [], statuses: [], can: { edit: true } };
+
+  it('list the project’s workflows, then the global ones in their own group', () => {
+    const out = copySources({ ...data, globalWorkflows: [{ id: 5, name: 'Simple' }] }, labels);
+    expect(out.map((o) => [o.value, o.label, o.group])).toEqual([
+      [String(software.id), `${software.name} (default)`, 'This project'],
+      [String(bugs.id), bugs.name, 'This project'],
+      ['5', 'Simple', 'Global'],
+    ]);
+  });
+
+  it('offer only the project’s own without a global list', () => {
+    expect(copySources(data, labels).every((o) => o.group === 'This project')).toBe(true);
   });
 });

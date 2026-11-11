@@ -1480,6 +1480,8 @@ export const hi: Messages = {
     delete: 'मिटाएँ',
     newWorkflow: 'नया वर्कफ़्लो',
     copyFrom: 'इसकी कॉपी से शुरू करें',
+    copyFromProject: 'यह प्रोजेक्ट',
+    copyFromGlobal: 'वैश्विक वर्कफ़्लो',
     newName: 'वर्कफ़्लो का नाम',
     create: 'बनाएँ',
     created: (name: string) => `वर्कफ़्लो “${name}” बनाया गया।`,

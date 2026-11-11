@@ -454,6 +454,19 @@ after 10 seconds, the answer is 503 and the call can be repeated.
   version, or get the replacement.
   (`version.create|update|release|merge|delete`)
 
+### Workflows — project admin to change, browse to read
+
+- `GET /api/projects/{key}/workflows` → `{workflows, issueTypes, statuses,
+  can: {edit}, globalWorkflows?}`. `globalWorkflows` (`[{id, name}]`, the
+  default first) comes only to the project's administrators: the global
+  workflows they can copy.
+- `POST /api/projects/{key}/workflows` `{name, copyFrom?}` → 201 `{id}`: a
+  copy of the statuses, transitions and initial status of `copyFrom`, a
+  workflow of the project or a global workflow (0 or left out: the project's
+  default). The copy is not the default and no issue type follows it; later
+  edits of the source leave it alone. A workflow of another project, or an
+  unknown id: 400. (`workflow.create`, the source in `copyFrom`)
+
 ---
 
 ## 7. Catalogues — global admin
