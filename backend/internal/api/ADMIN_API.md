@@ -476,7 +476,7 @@ Shared by all projects. Each list is in display order.
 | Catalogue | List | Item fields | Usage counted |
 |---|---|---|---|
 | Issue types | `GET /api/admin/issue-types` | `id, name, description, subtask, color?, fill?, icon?, position` | `issues, projects` |
-| Priorities | `GET /api/admin/priorities` | `id, name, description, color, position, default` | `issues` |
+| Priorities | `GET /api/admin/priorities` | `id, name, description, color, icon?, position, default` | `issues` |
 | Resolutions | `GET /api/admin/resolutions` | `id, name, description, position, default` | `issues` |
 | Link types | `GET /api/admin/link-types` | `id, name, inward, outward, position` | `links` |
 | Statuses | `GET /api/admin/statuses` | `id, name, category, position` | `usage: {issues, workflows, boardColumns}` |
@@ -485,7 +485,7 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
 
 - `POST /api/admin/{kind}` → 201 item. Names unique (409).
   - issue types: `{name, description?, subtask?, color?: "#rrggbb", fill?, icon?}`
-  - priorities: `{name, description?, color?: "#rrggbb"}`
+  - priorities: `{name, description?, color?: "#rrggbb", icon?}`
   - resolutions: `{name, description?}`
   - link types: `{name, inward, outward}`
 - `PATCH /api/admin/{kind}/{id}` same fields, all optional → item.
@@ -503,6 +503,12 @@ For `{kind}` in `issue-types`, `priorities`, `resolutions`, `link-types`:
   value: 400. `""` clears a field; unset fields are left out of the item,
   and of the issue types of `GET /api/meta`. Default types get their icon
   (`bug`, `story`, `epic`, `task`, `subtask`) and no colour or fill.
+- A priority's `icon` is one of `highest`, `high`, `medium`, `low`,
+  `lowest` (the five glyphs the position picks from), `blocker`,
+  `critical`, `urgent`, `minor`, `trivial`. Any other value: 400. `""`
+  clears it; without one, the priority shows the glyph of its position in
+  the list, so reordering changes it. Unset, it is left out of the item and
+  of the priorities of `GET /api/meta`.
 - `POST /api/admin/{kind}/order` `{ids: [...]}` → the list.
   `POST /api/admin/statuses/order` too.
 - `DELETE /api/admin/{kind}/{id}` body optional `{moveTo: id}` → 204.

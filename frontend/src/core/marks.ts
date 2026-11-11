@@ -3,15 +3,25 @@
  * people. Pure functions, so the rules are tested and the same everywhere.
  */
 
+import type { PriorityIcon } from './types.js';
+
 export type PriorityLevel = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
 
-export const PRIORITY_GLYPHS: Record<PriorityLevel, string> = {
+export const PRIORITY_GLYPHS: Record<PriorityIcon, string> = {
   highest: '▲▲',
   high: '▲',
   medium: '■',
   low: '▼',
   lowest: '▼▼',
+  blocker: '⊘',
+  critical: '!',
+  urgent: '!!',
+  minor: '·',
+  trivial: '○',
 };
+
+/** The icons an admin may choose, in the order the picker shows them. */
+export const PRIORITY_ICONS = Object.keys(PRIORITY_GLYPHS) as PriorityIcon[];
 
 /**
  * Where a priority sits in the ordered list (most urgent first). Jira's five
@@ -25,6 +35,15 @@ export function priorityLevel(index: number, count: number): PriorityLevel {
   if (count >= 4 && index === 0) return 'highest';
   if (count >= 4 && index === count - 1) return 'lowest';
   return index < mid ? 'high' : 'low';
+}
+
+/** The icon a priority shows: the one chosen, else the level of its position. */
+export function priorityIcon(
+  icon: PriorityIcon | undefined,
+  index: number,
+  count: number,
+): PriorityIcon {
+  return icon ?? priorityLevel(index, count);
 }
 
 export type TypeTone = 'bug' | 'story' | 'epic' | 'task' | 'subtask';

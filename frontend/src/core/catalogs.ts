@@ -15,7 +15,7 @@ import type {
   FieldType,
   StatusRow,
 } from './admin-types.js';
-import type { TypeFill, TypeIcon } from './types.js';
+import type { PriorityIcon, TypeFill, TypeIcon } from './types.js';
 import { tooLong, type Problems } from './admin-forms.js';
 
 /** The four catalogues of the "Tickets" group, as the navigation names them. */
@@ -83,8 +83,8 @@ export interface CatalogForm {
   color: string;
   /** Issue types; '' keeps the skin's look. */
   fill: TypeFill | '';
-  /** Issue types; '' draws the name's first letter. */
-  icon: TypeIcon | '';
+  /** Issue types ('' draws the name's first letter) and priorities ('' follows the position). */
+  icon: TypeIcon | PriorityIcon | '';
   default: boolean;
   outward: string;
   inward: string;
@@ -159,6 +159,7 @@ export function catalogPayload(
   }
   if (section === 'priorities') {
     all.color = normalizeColor(f.color) ?? '';
+    all.icon = f.icon;
     // Only ever set: another priority becoming the default unsets this one.
     if (f.default) all.default = true;
   }

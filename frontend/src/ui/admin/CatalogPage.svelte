@@ -11,6 +11,7 @@
   } from '../../core/catalogs.js';
   import { focusOrderAfterRemoval } from '../../core/focus.js';
   import { paths } from '../../core/route.js';
+  import type { PriorityIcon, TypeIcon } from '../../core/types.js';
   import { formatNumber } from '../../i18n/format.js';
   import { t } from '../../i18n/t.js';
   import { refocusLater } from '../../lib/actions.js';
@@ -253,7 +254,7 @@
                         subtask: !!item.subtask,
                         ...(item.color ? { color: item.color } : {}),
                         ...(item.fill ? { fill: item.fill } : {}),
-                        ...(item.icon ? { icon: item.icon } : {}),
+                        ...(item.icon ? { icon: item.icon as TypeIcon } : {}),
                       }}
                       withName
                       asStored
@@ -266,6 +267,7 @@
                         id: String(item.id),
                         name: item.name,
                         ...(item.color ? { color: item.color } : {}),
+                        ...(item.icon ? { icon: item.icon as PriorityIcon } : {}),
                       }}
                       withName
                       asStored

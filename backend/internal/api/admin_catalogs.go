@@ -35,6 +35,7 @@ type catalogueKind struct {
 	checkDelete func(ctx context.Context, db *sql.DB) error
 	// checkReplacement refuses moving what uses from to to.
 	checkReplacement func(from, to catalogueItem) error
+	icons            []string // the icons an item may take
 }
 
 // catalogueMove points what uses from at to instead, by the user by, and
@@ -46,11 +47,12 @@ var catalogueKinds = map[string]catalogueKind{
 		query: `SELECT t.id, t.name, t.description, t.position, t.subtask, t.color, t.fill, t.icon,
 			(SELECT COUNT(*) FROM issues i WHERE i.issue_type_id = t.id),
 			(SELECT COUNT(*) FROM project_issue_types p WHERE p.issue_type_id = t.id) FROM issue_types t`,
-		scan: scanIssueType, move: moveIssueType, checkDelete: keepLastIssueType, checkReplacement: sameSubtask},
-	"priorities": {table: "priorities", audit: "priority", fields: []string{"description", "color", "default"},
-		query: `SELECT t.id, t.name, t.description, t.position, t.color, t.is_default,
+		scan: scanIssueType, move: moveIssueType, checkDelete: keepLastIssueType, checkReplacement: sameSubtask,
+		icons: issueTypeIcons},
+	"priorities": {table: "priorities", audit: "priority", fields: []string{"description", "color", "icon", "default"},
+		query: `SELECT t.id, t.name, t.description, t.position, t.color, t.icon, t.is_default,
 			(SELECT COUNT(*) FROM issues i WHERE i.priority_id = t.id) FROM priorities t`,
-		scan: scanPriority, move: moveIssues("priority_id", "priority")},
+		scan: scanPriority, move: moveIssues("priority_id", "priority"), icons: priorityIcons},
 	"resolutions": {table: "resolutions", audit: "resolution", fields: []string{"description", "default"},
 		query: `SELECT t.id, t.name, t.description, t.position, t.is_default,
 			(SELECT COUNT(*) FROM issues i WHERE i.resolution_id = t.id) FROM resolutions t`,
@@ -126,11 +128,12 @@ func nullable(v sql.NullString) *string {
 
 func scanPriority(rows *sql.Rows) (catalogueItem, error) {
 	var it catalogueItem
-	var desc, color sql.NullString
+	var desc, color, icon sql.NullString
 	var def bool
 	var issues int
-	err := rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &color, &def, &issues)
+	err := rows.Scan(&it.ID, &it.Name, &desc, &it.Position, &color, &icon, &def, &issues)
 	it.Description, it.Color, it.Default, it.Issues = &desc.String, &color.String, &def, &issues
+	it.Icon = nullable(icon)
 	return it, err
 }
 
@@ -199,6 +202,10 @@ var (
 	issueTypeFills = []string{"filled", "subtle", "outline"}
 	issueTypeIcons = []string{"bug", "story", "epic", "task", "subtask", "bolt", "flag", "star", "check", "bookmark",
 		"question", "wrench", "shield", "doc", "rocket", "lightbulb", "gear", "lock"}
+	// The glyphs a priority may show; without one, its position picks among
+	// the first five.
+	priorityIcons = []string{"highest", "high", "medium", "low", "lowest",
+		"blocker", "critical", "urgent", "minor", "trivial"}
 )
 
 // saveCatalogueItem creates an item (no id in the path) or changes one.
@@ -330,7 +337,7 @@ func (s *Server) parseCatalogueFields(ctx context.Context, c catalogueKind, raw 
 			}
 			allowed := issueTypeFills
 			if k == "icon" {
-				allowed = issueTypeIcons
+				allowed = c.icons
 			}
 			if v != "" && !containsStr(allowed, v) {
 				return nil, failf(http.StatusBadRequest, i18n.FieldValueInvalid, k)

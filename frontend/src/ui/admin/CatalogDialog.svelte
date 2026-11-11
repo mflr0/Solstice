@@ -12,10 +12,11 @@
     type CatalogForm,
     type CatalogSection,
   } from '../../core/catalogs.js';
-  import { typeLetter } from '../../core/marks.js';
-  import type { TypeFill, TypeIcon } from '../../core/types.js';
+  import { PRIORITY_GLYPHS, PRIORITY_ICONS, priorityIcon, typeLetter } from '../../core/marks.js';
+  import type { PriorityIcon, TypeFill, TypeIcon } from '../../core/types.js';
   import { t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
+  import { session } from '../../lib/session.svelte.js';
 
   import Modal from '../Modal.svelte';
   import PriorityMark from '../PriorityMark.svelte';
@@ -53,25 +54,37 @@
 
   const FILLS: (TypeFill | '')[] = ['', 'filled', 'subtle', 'outline'];
   const ICONS: (TypeIcon | '')[] = ['', ...(Object.keys(TYPE_ICONS) as TypeIcon[])];
+  const PRIO_ICONS: (PriorityIcon | '')[] = ['', ...PRIORITY_ICONS];
   let iconGrid = $state<HTMLElement>();
 
+  /** The glyph a priority left on automatic shows, as PriorityMark picks it. */
+  const autoGlyph = $derived(
+    PRIORITY_GLYPHS[
+      priorityIcon(
+        undefined,
+        item ? session.priorityIndex({ id: String(item.id), name: item.name }) : -1,
+        session.meta?.priorities.length ?? 0,
+      )
+    ],
+  );
+
   /** Arrow keys move the choice through the icon grid, as in a radio group. */
-  function iconKey(e: KeyboardEvent, i: number) {
+  function iconKey(e: KeyboardEvent, i: number, icons: readonly (TypeIcon | PriorityIcon | '')[]) {
     const cols = iconGrid
       ? getComputedStyle(iconGrid).gridTemplateColumns.split(' ').length
-      : ICONS.length;
+      : icons.length;
     const to = {
       ArrowLeft: i - 1,
       ArrowRight: i + 1,
       ArrowUp: i - cols,
       ArrowDown: i + cols,
       Home: 0,
-      End: ICONS.length - 1,
+      End: icons.length - 1,
     }[e.key];
     if (to === undefined) return;
     e.preventDefault();
-    const next = Math.max(0, Math.min(ICONS.length - 1, to));
-    form.icon = ICONS[next] ?? '';
+    const next = Math.max(0, Math.min(icons.length - 1, to));
+    form.icon = icons[next] ?? '';
     iconGrid?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
   }
 
@@ -257,7 +270,7 @@
               title={ic ? t.catalogAdmin.icons[ic] : t.catalogAdmin.iconLetter}
               tabindex={form.icon === ic ? 0 : -1}
               onclick={() => (form.icon = ic)}
-              onkeydown={(e) => iconKey(e, i)}
+              onkeydown={(e) => iconKey(e, i, ICONS)}
             >
               {#if ic}<svg viewBox="0 0 16 16" aria-hidden="true"
                   >{#each TYPE_ICONS[ic] as path, j (j)}<path d={path.d} />{/each}</svg
@@ -278,7 +291,7 @@
               subtask: form.subtask,
               ...(color ? { color } : {}),
               ...(form.fill ? { fill: form.fill } : {}),
-              ...(form.icon ? { icon: form.icon } : {}),
+              ...(form.icon ? { icon: form.icon as TypeIcon } : {}),
             }}
             withName
             asStored
@@ -289,7 +302,36 @@
 
     {#if section === 'priorities'}
       {@render colorField()}
-      <div class="preview">
+      <div class="field">
+        <span class="field-label" id="{formId}-icon">{t.catalogAdmin.icon}</span>
+        <div
+          class="icon-grid"
+          role="radiogroup"
+          aria-labelledby="{formId}-icon"
+          bind:this={iconGrid}
+        >
+          {#each PRIO_ICONS as ic, i (ic)}
+            {@const label = ic ? t.catalogAdmin.priorityIcons[ic] : t.catalogAdmin.iconAuto}
+            <button
+              type="button"
+              class="icon-choice"
+              class:auto={!ic}
+              role="radio"
+              aria-checked={form.icon === ic}
+              aria-label={label}
+              title={label}
+              tabindex={form.icon === ic ? 0 : -1}
+              onclick={() => (form.icon = ic)}
+              onkeydown={(e) => iconKey(e, i, PRIO_ICONS)}
+            >
+              <span class="glyph-choice" aria-hidden="true"
+                >{ic ? PRIORITY_GLYPHS[ic] : autoGlyph}</span
+              >
+            </button>
+          {/each}
+        </div>
+      </div>
+      <div class="preview" aria-live="polite">
         <span class="field-label">{t.catalogAdmin.preview}</span>
         <p>
           <PriorityMark
@@ -297,6 +339,7 @@
               id: item ? String(item.id) : '',
               name: form.name.trim() || m.namePlaceholder,
               ...(color ? { color } : {}),
+              ...(form.icon ? { icon: form.icon as PriorityIcon } : {}),
             }}
             withName
             asStored
@@ -423,6 +466,15 @@
   .icon-choice[aria-checked='true'] {
     border-color: var(--accent);
     box-shadow: inset 0 0 0 1px var(--accent);
+  }
+
+  /* Automatic shows the glyph of the position, set apart from the same glyph chosen. */
+  .icon-choice.auto {
+    border-style: dashed;
+  }
+
+  .glyph-choice {
+    letter-spacing: -1px;
   }
 
   .icon-choice svg {

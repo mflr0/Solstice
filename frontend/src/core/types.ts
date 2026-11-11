@@ -49,10 +49,25 @@ export interface StatusRef {
 /** The key of a seeded default the name still is (see src/core/seeded.ts). */
 export type SeedKey = string;
 
+/** The glyphs an admin may give a priority (see ADMIN_API.md). */
+export type PriorityIcon =
+  | 'highest'
+  | 'high'
+  | 'medium'
+  | 'low'
+  | 'lowest'
+  | 'blocker'
+  | 'critical'
+  | 'urgent'
+  | 'minor'
+  | 'trivial';
+
 export interface PriorityRef {
   id: string;
   name: string;
   color?: string;
+  /** Unset shows the glyph of the priority's position. */
+  icon?: PriorityIcon;
   seed?: SeedKey;
 }
 
