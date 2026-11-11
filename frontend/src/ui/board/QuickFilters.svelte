@@ -4,7 +4,10 @@
   import { t } from '../../i18n/t.js';
   import { router } from '../../lib/router.svelte.js';
 
-  /** A board's quick filters as toggle buttons; the choice lives in the address (?quick=1,3). */
+  /**
+   * A board's quick filters as toggle buttons, at the end of the quick filter
+   * row; the choice lives in the address (?quick=1,3).
+   */
   interface Props {
     filters: QuickFilter[];
     selected: number[];
@@ -17,8 +20,8 @@
 </script>
 
 {#if filters.length}
+  <span class="divider" aria-hidden="true"></span>
   <div class="quick" role="group" aria-label={t.boards.quickFilters}>
-    <span class="label" aria-hidden="true">{t.boards.quickFilters}</span>
     {#each filters as f (f.id)}
       <button
         type="button"
@@ -35,18 +38,16 @@
 {/if}
 
 <style>
+  /* Its buttons wrap with the rest of the row. */
   .quick {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    margin: 0 0 14px;
+    display: contents;
   }
 
-  .label {
-    font: 500 0.75rem/1.2 var(--font-body);
-    color: var(--muted);
-    margin-right: 4px;
+  .divider {
+    align-self: stretch;
+    width: 1px;
+    margin: 2px 4px;
+    background: var(--rule-strong);
   }
 
   .link-btn {

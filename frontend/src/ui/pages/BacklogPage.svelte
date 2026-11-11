@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import {
     applyMove,
+    cardFacets,
     dropIndex,
     neighbours,
     parseQuick,
@@ -11,7 +12,7 @@
     totalEstimate,
   } from '../../core/board.js';
   import type { BoardCard as Card, BoardDetail, CardMove, Sprint } from '../../core/board-types.js';
-  import { filtersToJql, type FilterState } from '../../core/filters.js';
+  import { filtersToJql, QUICK_FIELDS, type FilterState } from '../../core/filters.js';
   import { paths } from '../../core/route.js';
   import { t } from '../../i18n/t.js';
   import { listKeys } from '../../lib/actions.js';
@@ -26,9 +27,10 @@
   import CompleteSprintDialog from '../board/CompleteSprintDialog.svelte';
   import EditSprintDialog from '../board/EditSprintDialog.svelte';
   import { issueGroup } from '../board/issue-menu.js';
-  import QuickFilters from '../board/QuickFilters.svelte';
+  import BoardQuickFilters from '../board/QuickFilters.svelte';
   import CloneDialog from '../issue/CloneDialog.svelte';
   import FilterBar from '../search/FilterBar.svelte';
+  import QuickFilters from '../search/QuickFilters.svelte';
   import SprintHead from '../board/SprintHead.svelte';
   import StartSprintDialog from '../board/StartSprintDialog.svelte';
   import ConfirmDialog from '../ConfirmDialog.svelte';
@@ -109,12 +111,36 @@
     }
   }
 
+  /** The issues without the quick filter row's fields, when it has some: they give the row its values. */
+  let rowCards = $state<Card[] | null>(null);
+  let rowSeq = 0;
+
+  async function loadRowCards(id: number, q: string, jql: string | undefined) {
+    const mine = ++rowSeq;
+    try {
+      const res = await api.backlog(id, { quick: q || undefined, jql });
+      if (mine === rowSeq) rowCards = [...res.sprints.flatMap((s) => s.cards), ...res.backlog];
+    } catch {
+      // The row shows oneself only.
+    }
+  }
+
   function reload() {
     void loadList(boardId, quickParam, search.jql);
+    if (search.rowJql !== search.jql) void loadRowCards(boardId, quickParam, search.rowJql);
   }
 
   $effect(() => {
     void loadList(boardId, quickParam, search.jql);
+  });
+
+  $effect(() => {
+    if (search.rowJql !== search.jql) void loadRowCards(boardId, quickParam, search.rowJql);
+  });
+
+  const rowFacets = $derived.by(() => {
+    const source = search.rowJql === search.jql ? cards : rowCards;
+    return source ? cardFacets(source) : null;
   });
 
   $effect(() => live.onChange(debounce(reload, 400)));
@@ -362,10 +388,17 @@
     <BoardHeader detail={d} view="backlog" />
     <BoardRail detail={d}>
       <div class="board-search">
-        <FilterBar filters={search.filters} onchange={applyFilters} valueCounts={false} />
+        <FilterBar
+          filters={search.filters}
+          onchange={applyFilters}
+          valueCounts={false}
+          rowFields={QUICK_FIELDS}
+        />
+        <QuickFilters filters={search.filters} onchange={applyFilters} cards={rowFacets}>
+          <BoardQuickFilters filters={d.quickFilters} selected={quick} />
+        </QuickFilters>
       </div>
       {#if search.refused}<p class="notice" role="status">{t.search.tooComplex}</p>{/if}
-      <QuickFilters filters={d.quickFilters} selected={quick} />
 
       {#if listError}
         <p class="error-text" role="alert">{listError}</p>

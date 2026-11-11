@@ -12,8 +12,15 @@ import type {
   BoardSection,
   SectionStrategy,
 } from './board-types.js';
-import type { IssueBrief, UserRef } from './types.js';
-import { emptyFilters, jqlToFilters, type FilterState } from './filters.js';
+import type { Facets, IssueBrief, UserRef } from './types.js';
+import {
+  emptyFilters,
+  filtersToJql,
+  jqlToFilters,
+  QUICK_FIELDS,
+  withoutField,
+  type FilterState,
+} from './filters.js';
 import { isoDay, parseDay } from './dates.js';
 import { formatLocale } from '../i18n/format.js';
 
@@ -330,14 +337,52 @@ export interface BoardSearch {
   jql: string | undefined;
   /** The address holds a query the row can't show: the whole board is shown. */
   refused: boolean;
+  /** The query without the quick filter row's fields, whose cards give the row its values. */
+  rowJql: string | undefined;
 }
 
 export function readBoardSearch(param: string | null): BoardSearch {
   const jql = param?.trim();
-  if (!jql) return { filters: emptyFilters(), jql: undefined, refused: false };
+  if (!jql) return { filters: emptyFilters(), jql: undefined, refused: false, rowJql: undefined };
   const r = jqlToFilters(jql);
-  if (!r.ok) return { filters: emptyFilters(), jql: undefined, refused: true };
-  return { filters: r.state, jql, refused: false };
+  if (!r.ok) return { filters: emptyFilters(), jql: undefined, refused: true, rowJql: undefined };
+  const rest = QUICK_FIELDS.reduce((s, f) => withoutField(s, f), r.state);
+  return { filters: r.state, jql, refused: false, rowJql: filtersToJql(rest) || undefined };
+}
+
+/**
+ * The quick filter row's counts, from a board's cards: assignees, statuses,
+ * types and priorities by id, epics by key ("" counts the cards without one).
+ */
+export function cardFacets(cards: BoardCard[]): Facets {
+  const assignee: Record<string, number> = {};
+  const type: Record<string, number> = {};
+  const status: Record<string, number> = {};
+  const priority: Record<string, number> = {};
+  const epic: Record<string, number> = {};
+  const users: Facets['users'] = {};
+  const epics: Facets['epics'] = {};
+  const add = (counts: Record<string, number>, key: string) => {
+    counts[key] = (counts[key] ?? 0) + 1;
+  };
+  for (const c of cards) {
+    add(assignee, c.assignee ? String(c.assignee.id) : '');
+    if (c.assignee) users[c.assignee.id] = c.assignee;
+    add(type, c.type.id);
+    add(status, c.status.id);
+    add(priority, c.priority?.id ?? '');
+    add(epic, c.epic?.key ?? '');
+    if (c.epic) epics[c.epic.key] = { key: c.epic.key, summary: c.epic.summary };
+  }
+  return { total: cards.length, facets: { assignee, type, status, priority, epic }, users, epics };
+}
+
+/** The options counted on a board's cards: the values it has. */
+export function presentOptions<T extends { facets?: string[] | undefined }>(
+  options: T[],
+  counts: Record<string, number>,
+): T[] {
+  return options.filter((o) => o.facets?.some((k) => (counts[k] ?? 0) > 0));
 }
 
 /** Turns a quick filter on or off; the address form, '' when none is left. */

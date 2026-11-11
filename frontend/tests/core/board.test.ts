@@ -4,6 +4,7 @@ import {
   applyMove,
   boardFilterQuery,
   boardStep,
+  cardFacets,
   dayAfter,
   daysLeft,
   dropIndex,
@@ -12,6 +13,7 @@ import {
   legacyBoardPath,
   neighbours,
   parseQuick,
+  presentOptions,
   readBoardSearch,
   sprintEnd,
   staysInPlace,
@@ -21,6 +23,7 @@ import {
 } from '../../src/core/board.js';
 import type { BoardCard } from '../../src/core/board-types.js';
 import type { IssueBrief, UserRef } from '../../src/core/types.js';
+import { quickUsers } from '../../src/core/filters.js';
 import { matchRoute, paths } from '../../src/core/route.js';
 
 const user = (id: number, name: string): UserRef => ({
@@ -285,6 +288,57 @@ describe('the filter row in the address', () => {
   it('refuses, and sends nothing for, a query the row cannot show', () => {
     for (const p of ['status = Done OR assignee is EMPTY', 'summary ~'])
       expect(readBoardSearch(p)).toMatchObject({ jql: undefined, refused: true });
+  });
+
+  it('asks the quick filter row its values without its own fields', () => {
+    const r = readBoardSearch(
+      'assignee = currentUser() AND type = Bug AND statusCategory = done AND text ~ "panier"',
+    );
+    expect(r.rowJql).toBe('text ~ "panier"');
+    expect(readBoardSearch('priority = High AND epic = SOL-1').rowJql).toBeUndefined();
+    expect(readBoardSearch(null).rowJql).toBeUndefined();
+  });
+});
+
+describe('the quick filter row on a board', () => {
+  const ana = user(1, 'Ana');
+  const bob = user(2, 'Bob');
+  const cleo = user(3, 'Cléo');
+  const bug = { id: '7', name: 'Bug', subtask: false };
+  const epic = { ...brief('SOL-9'), summary: 'Panier' };
+  const cards = [
+    card('A-1', { assignee: bob }),
+    card('A-2', { assignee: bob, type: bug, epic }),
+    card('A-3', { assignee: cleo, priority: { id: '2', name: 'High' } }),
+    card('A-4'),
+  ];
+
+  it('counts the cards per value', () => {
+    const f = cardFacets(cards);
+    expect(f.total).toBe(4);
+    expect(f.facets.assignee).toEqual({ '2': 2, '3': 1, '': 1 });
+    expect(f.facets.type).toEqual({ '3': 3, '7': 1 });
+    expect(f.facets.priority).toEqual({ '': 3, '2': 1 });
+    expect(f.facets.epic).toEqual({ '': 3, 'SOL-9': 1 });
+    expect(f.epics).toEqual({ 'SOL-9': { key: 'SOL-9', summary: 'Panier' } });
+  });
+
+  it('shows oneself first, then the assignees by card count', () => {
+    const f = cardFacets(cards);
+    const names = (me: UserRef) => quickUsers(f.facets.assignee ?? {}, f.users, me).users;
+    expect(names(ana).map((u) => u.name)).toEqual(['Ana', 'Bob', 'Cléo']);
+    expect(names(cleo).map((u) => u.name)).toEqual(['Cléo', 'Bob']);
+  });
+
+  it('offers only the values the board has', () => {
+    const types = [
+      { value: 'Task', facets: ['3'] },
+      { value: 'Bug', facets: ['7'] },
+      { value: 'Story', facets: ['1'] },
+      { value: 'none' },
+    ];
+    const f = cardFacets(cards);
+    expect(presentOptions(types, f.facets.type ?? {}).map((o) => o.value)).toEqual(['Task', 'Bug']);
   });
 });
 
