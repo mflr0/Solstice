@@ -8,6 +8,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -136,6 +137,25 @@ func (s *Server) customFields(ctx context.Context) ([]customFieldDef, error) {
 		return nil
 	})
 	return out, err
+}
+
+// epicLinkFieldID is the id of the Epic Link field the REST API shows on an
+// instance whose custom fields have none: no custom_fields row has id 0.
+const epicLinkFieldID = 0
+
+// restCustomFields is customFields with an Epic Link field, backed by the
+// issue's epic, when no imported one exists.
+func (s *Server) restCustomFields(ctx context.Context) ([]customFieldDef, error) {
+	out, err := s.customFields(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := fieldOfKind(out, issue.KindEpicLink); !ok {
+		out = append(out, customFieldDef{ID: epicLinkFieldID, Name: "Epic Link",
+			TypeKey: "com.pyxis.greenhopper.jira:" + issue.KindEpicLink, Kind: issue.KindEpicLink})
+		slices.SortStableFunc(out, func(a, b customFieldDef) int { return strings.Compare(a.Name, b.Name) })
+	}
+	return out, nil
 }
 
 // fieldOfKind returns the first custom field of a kind (gh-sprint…), if any.
