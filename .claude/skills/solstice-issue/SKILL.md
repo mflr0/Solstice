@@ -1,5 +1,5 @@
 ---
-name: work-issue
+name: solstice-issue
 description: Pick, claim and deliver one Solstice GitHub issue, coordinated with the other Claude sessions.
 disable-model-invocation: true
 argument-hint: "[number] [label...]"
