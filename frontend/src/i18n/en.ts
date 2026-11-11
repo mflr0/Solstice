@@ -578,6 +578,8 @@ export const en = {
     close: 'Close',
     reset: 'Clear',
     andMore: (n: number) => `+${n}`,
+    quickFilters: 'Quick filters',
+    moreAssignees: 'Other assignees',
     special: {
       me: 'Me',
       unassigned: 'Unassigned',

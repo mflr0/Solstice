@@ -3,8 +3,6 @@
   import {
     EMPTY,
     emptyFilters,
-    FACET_FIELDS,
-    facetJql,
     isBlank,
     matchPreset,
     ME,
@@ -12,6 +10,8 @@
     rangeSet,
     sameValue,
     toggle,
+    withoutField,
+    withValues,
     type DateField,
     type DateRange,
     type FilterState,
@@ -20,16 +20,20 @@
   } from '../../core/filters.js';
   import { quote } from '../../core/jql.js';
   import { matches } from '../../core/text.js';
-  import type { StatusCategory } from '../../core/types.js';
-  import { categoryLabels, t } from '../../i18n/t.js';
-  import { formatList } from '../../i18n/format.js';
-  import { api } from '../../lib/api.js';
+  import { t } from '../../i18n/t.js';
   import { autofocus as focusOnMount } from '../../lib/actions.js';
-  import { session } from '../../lib/session.svelte.js';
   import Dropdown from '../Dropdown.svelte';
   import DateRangePicker from './DateRangePicker.svelte';
   import FilterPopover from './FilterPopover.svelte';
-  import { hasMarks, labelOf, loadOptions, markOf, specialValues } from './sources.svelte.js';
+  import ListPicker from './ListPicker.svelte';
+  import {
+    chosenNames,
+    facetCounts,
+    labelOf,
+    loadOptions,
+    markOf,
+    specialValues,
+  } from './sources.svelte.js';
   import ValuePicker from './ValuePicker.svelte';
 
   /**
@@ -49,6 +53,8 @@
     tools?: Snippet | undefined;
     /** Issues per value in the lists; off where the search's counts aren't the page's (boards). */
     valueCounts?: boolean | undefined;
+    /** Fields the quick filter row shows: they get no chip here, "+ Filter" still offers them. */
+    rowFields?: readonly ListField[] | undefined;
   }
   const {
     filters,
@@ -57,6 +63,7 @@
     autofocus = false,
     tools,
     valueCounts = true,
+    rowFields = [],
   }: Props = $props();
 
   type Field = ListField | DateField;
@@ -82,8 +89,6 @@
   const ROLES = ['participant', 'assignee', 'reporter', 'creator', 'watcher', 'commenter'] as const;
   const DATES: readonly string[] = ['created', 'updated', 'due', 'resolved'];
   const isDate = (f: string): f is DateField => DATES.includes(f);
-  const OPEN: StatusCategory[] = ['todo', 'doing'];
-  const DONE: StatusCategory[] = ['done'];
 
   const groups = $derived(
     GROUPS.map((g) => ({ ...g, fields: g.fields.filter((f) => !(project && f === 'project')) })),
@@ -94,7 +99,11 @@
   let burst = '';
   let bar: HTMLDivElement | undefined = $state();
   /** The criteria in use, and the one whose list is open: its last value may just have been unticked. */
-  const chips = $derived(fields.filter((f) => hasValue(f) || openId === f));
+  const chips = $derived(
+    fields.filter(
+      (f) => !(rowFields as readonly Field[]).includes(f) && (hasValue(f) || openId === f),
+    ),
+  );
 
   // The text field follows the filters (back, forward) but not while typing.
   let text = $state(untrack(() => filters.text));
@@ -207,19 +216,8 @@
     onchange(next, b);
   }
 
-  function setValues(field: ListField, values: string[]) {
-    const next = { ...filters, values: { ...filters.values, [field]: values } };
-    if (values.length === 0) delete next.values[field];
-    if (field === 'people') next.peopleRole = peopleRole;
-    // A status and a status category do not mix: one replaces the other.
-    if (field === 'status' && values.length) next.categories = [];
-    change(next);
-  }
-
-  function setCategories(cats: StatusCategory[]) {
-    const values = { ...filters.values };
-    if (cats.length) delete values.status;
-    change({ ...filters, values, categories: cats });
+  function setPeople(values: string[]) {
+    change({ ...withValues(filters, 'people', values), peopleRole });
   }
 
   function setRange(field: DateField, r: DateRange | undefined) {
@@ -231,9 +229,7 @@
 
   function clearField(f: ListField | DateField) {
     if (DATES.includes(f)) return setRange(f as DateField, undefined);
-    const next = { ...filters, values: { ...filters.values } };
-    delete next.values[f as ListField];
-    if (f === 'status') next.categories = [];
+    const next = withoutField(filters, f as ListField);
     if (f === 'people') {
       next.peopleRole = 'participant';
       roleDraft = null;
@@ -299,16 +295,6 @@
     );
   }
 
-  const sameSet = (a: StatusCategory[], b: StatusCategory[]) =>
-    a.length === b.length && a.every((c) => b.includes(c));
-
-  function categorySummary(cats: StatusCategory[]): string {
-    if (cats.length === 0 || cats.length === 3) return '';
-    if (sameSet(cats, OPEN)) return t.search.special.open;
-    if (sameSet(cats, DONE)) return t.search.special.done;
-    return t.search.categoryOnly(formatList(cats.map((c) => categoryLabels[c])));
-  }
-
   /** "In progress, To do", "In progress, To do +1". */
   function summarize(names: string[]): string {
     if (names.length <= 2) return names.join(', ');
@@ -316,12 +302,7 @@
   }
 
   function listSummary(field: ListField): string {
-    const names = (filters.values[field] ?? []).map((v) => labelOf(field, v));
-    if (field === 'status') {
-      const c = categorySummary(filters.categories);
-      if (c) names.unshift(c);
-    }
-    return summarize(names);
+    return summarize(chosenNames(filters, field));
   }
 
   function dateSummary(field: DateField): string {
@@ -343,10 +324,8 @@
   }
 
   /**
-   * Issues per value of the field whose list is open, counted on the search
-   * without that field's own filter: ticking a value shows what it adds.
-   * Fetched when the list opens; it stays right while it is open, since only
-   * that field changes then.
+   * Issues per value of the field whose list is open. Fetched when the list
+   * opens; it stays right while it is open, since only that field changes then.
    */
   let counts = $state<{ field: string; values: Record<string, number> } | null>(null);
   let countSeq = 0;
@@ -354,47 +333,17 @@
   async function loadCounts(id: string) {
     const mine = ++countSeq;
     counts = null;
-    const field = FACET_FIELDS.find((f) => f === id);
+    const field = (fields as string[]).includes(id) && !isDate(id) ? (id as ListField) : null;
     if (!field || !valueCounts) return;
     try {
-      const r = await api.facets({ jql: facetJql(filters, field), project, fields: field });
-      if (mine === countSeq) counts = { field, values: r.facets[field] ?? {} };
+      const values = await facetCounts(filters, field, project);
+      if (values && mine === countSeq) counts = { field, values };
     } catch {
       // The lists work without their counts.
     }
   }
 
   const countsFor = (field: ListField) => (counts?.field === field ? counts.values : null);
-
-  /** Issues in some status categories, from the status counts. */
-  function categoryCount(cats: StatusCategory[]): number | undefined {
-    const c = countsFor('status');
-    if (!c) return undefined;
-    return (session.meta?.statuses ?? [])
-      .filter((st) => cats.includes(st.category))
-      .reduce((n, st) => n + (c[st.id] ?? 0), 0);
-  }
-
-  function shortcutsFor(field: ListField) {
-    if (field !== 'status') return [];
-    return [
-      {
-        label: t.search.special.open,
-        checked: sameSet(filters.categories, OPEN),
-        toggle: () => setCategories(sameSet(filters.categories, OPEN) ? [] : OPEN),
-        count: categoryCount(OPEN),
-      },
-      {
-        label: t.search.special.done,
-        checked: sameSet(filters.categories, DONE),
-        toggle: () => setCategories(sameSet(filters.categories, DONE) ? [] : DONE),
-        count: categoryCount(DONE),
-      },
-    ];
-  }
-
-  /** Fields whose values may be typed in freely (anything the server will match by name). */
-  const FREE: ListField[] = ['labels', 'fixVersion', 'component', 'epic'];
 
   function scope(): string[] {
     return project ? [quote(project)] : (filters.values.project ?? []);
@@ -418,18 +367,13 @@
 </script>
 
 {#snippet listPicker(field: ListField)}
-  <ValuePicker
-    label={t.search.fields[field]}
-    selected={filters.values[field] ?? []}
-    onchange={(v) => setValues(field, v)}
-    load={(q) => loadOptions(field, q, scope())}
-    special={specialValues(field)}
-    shortcuts={shortcutsFor(field)}
-    labelOf={(v) => labelOf(field, v)}
-    free={FREE.includes(field) ? (s) => (field === 'epic' ? s.toUpperCase() : quote(s)) : undefined}
+  <ListPicker
+    {filters}
+    {field}
+    {project}
+    onchange={(next) => change(next)}
     onreset={() => clearField(field)}
     counts={countsFor(field)}
-    markOf={hasMarks(field) ? (v) => markOf(field, v) : undefined}
   />
 {/snippet}
 
@@ -449,7 +393,7 @@
   <ValuePicker
     label={t.search.fields.people}
     selected={filters.values.people ?? []}
-    onchange={(v) => setValues('people', v)}
+    onchange={setPeople}
     load={(q) => loadOptions('people', q, scope())}
     special={specialValues('people', peopleRole)}
     labelOf={(v) => labelOf('people', v, peopleRole)}

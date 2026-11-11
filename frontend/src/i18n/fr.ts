@@ -583,6 +583,8 @@ export const fr: Messages = {
     close: 'Fermer',
     reset: 'Effacer',
     andMore: (n: number) => `+${n}`,
+    quickFilters: 'Filtres rapides',
+    moreAssignees: 'Autres assignés',
     special: {
       me: 'Moi',
       unassigned: 'Non assigné',

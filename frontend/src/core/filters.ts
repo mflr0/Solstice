@@ -651,3 +651,81 @@ export function toggle(values: string[], value: string): string[] {
     ? values.filter((v) => !sameValue(v, value))
     : [...values, value];
 }
+
+/* Editing ------------------------------------------------------------------- */
+
+/** The filters with a list field's values replaced (none: the field unset). */
+export function withValues(s: FilterState, field: ListField, values: string[]): FilterState {
+  const next = { ...s, values: { ...s.values, [field]: values } };
+  if (values.length === 0) delete next.values[field];
+  // A status and a status category do not mix: one replaces the other.
+  if (field === 'status' && values.length) next.categories = [];
+  return next;
+}
+
+/** The filters with the status categories replaced; they drop the chosen statuses. */
+export function withCategories(s: FilterState, categories: StatusCategory[]): FilterState {
+  const values = { ...s.values };
+  if (categories.length) delete values.status;
+  return { ...s, values, categories };
+}
+
+/** The filters without a list field (status: its categories too). */
+export function withoutField(s: FilterState, field: ListField): FilterState {
+  const next = { ...s, values: { ...s.values } };
+  delete next.values[field];
+  if (field === 'status') next.categories = [];
+  return next;
+}
+
+/* Quick filters ------------------------------------------------------------- */
+
+/** The fields the quick filter row holds, the assignee as avatars. */
+export const QUICK_FIELDS = ['assignee', 'type', 'status', 'priority', 'epic'] as const;
+
+/** A person on the quick filter row, with the assignee value they stand for. */
+export interface QuickUser {
+  id: number;
+  name: string;
+  /** currentUser() for oneself, else the quoted username. */
+  value: string;
+  count: number;
+}
+
+/**
+ * The people the quick filter row shows: oneself first, even with nothing
+ * assigned, then the assignees with the most issues, ties by name, at most
+ * limit in all. The chosen ones (assignee values) stay with no issue left,
+ * when users knows them. more counts the assignees left out.
+ */
+export function quickUsers(
+  counts: Record<string, number>,
+  users: Record<string, { id: number; username: string; name: string }>,
+  me: { id: number; name: string } | null,
+  chosen: string[] = [],
+  limit = 6,
+): { users: QuickUser[]; more: number } {
+  const others: QuickUser[] = [];
+  for (const [id, u] of Object.entries(users)) {
+    const value = quote(u.username);
+    const count = counts[id] ?? 0;
+    if (u.id === me?.id || (count <= 0 && !chosen.some((v) => sameValue(v, value)))) continue;
+    others.push({ id: u.id, name: u.name, value, count });
+  }
+  others.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const self: QuickUser[] = me
+    ? [{ id: me.id, name: me.name, value: ME, count: counts[String(me.id)] ?? 0 }]
+    : [];
+  const shown = [...self, ...others].slice(0, limit);
+  return { users: shown, more: self.length + others.length - shown.length };
+}
+
+/** Whether an assignee value is chosen, as the quick row's avatars show it. */
+export function hasAssignee(s: FilterState, value: string): boolean {
+  return (s.values.assignee ?? []).some((v) => sameValue(v, value));
+}
+
+/** Presses or releases a person's avatar: their value in the assignee filter. */
+export function toggleAssignee(s: FilterState, value: string): FilterState {
+  return withValues(s, 'assignee', toggle(s.values.assignee ?? [], value));
+}

@@ -4,6 +4,7 @@
     emptyFilters,
     filtersToJql,
     jqlToFilters,
+    QUICK_FIELDS,
     readSort,
     type FilterState,
     type SortField,
@@ -27,10 +28,11 @@
   import ColumnPicker from './ColumnPicker.svelte';
   import FilterBar from './FilterBar.svelte';
   import JqlEditor from './JqlEditor.svelte';
+  import QuickFilters from './QuickFilters.svelte';
 
   /**
    * A search kept in the address: the filter bar (or the JQL editor) with
-   * the tools at its end, the count and the sort, then the results. Every change is a new address, so
+   * the tools at its end and the quick filter row, the count and the sort, then the results. Every change is a new address, so
    * back and forward walk through the searches and any link can be shared.
    */
   interface Props {
@@ -220,7 +222,15 @@
   {#if jql === null}
     <p class="muted loading">{t.common.loading}</p>
   {:else if visual}
-    <FilterBar {filters} onchange={applyFilters} {project} {autofocus} {tools} />
+    <FilterBar
+      {filters}
+      onchange={applyFilters}
+      {project}
+      {autofocus}
+      {tools}
+      rowFields={QUICK_FIELDS}
+    />
+    <QuickFilters {filters} onchange={applyFilters} {project} />
   {:else}
     <div class="jql-tools">{@render tools()}</div>
     <JqlEditor

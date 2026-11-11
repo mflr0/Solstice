@@ -5,7 +5,16 @@
  * once is kept for the session.
  */
 
-import { EMPTY, literal, ME, type ListField, type PeopleRole } from '../../core/filters.js';
+import {
+  EMPTY,
+  FACET_FIELDS,
+  facetJql,
+  literal,
+  ME,
+  type FilterState,
+  type ListField,
+  type PeopleRole,
+} from '../../core/filters.js';
 import { fold, matches } from '../../core/text.js';
 import {
   customKind,
@@ -19,6 +28,8 @@ import {
 import {
   STATUS_CATEGORIES,
   type CustomFieldRef,
+  type Facets,
+  type StatusCategory,
   type Project,
   type ProjectValue,
   type SprintSuggestion,
@@ -26,6 +37,7 @@ import {
   type UserRef,
 } from '../../core/types.js';
 import { categoryLabels, t } from '../../i18n/t.js';
+import { formatList } from '../../i18n/format.js';
 import { api } from '../../lib/api.js';
 import { refs } from '../../lib/refs.svelte.js';
 import { session } from '../../lib/session.svelte.js';
@@ -215,7 +227,7 @@ export async function loadOptions(
       for (const e of epics) catalog.epics[e.key] = e.summary;
       return epics
         .filter((e) => keys.length < 2 || keys.includes(e.project))
-        .map((e) => ({ value: e.key, label: e.summary, hint: e.key }));
+        .map((e) => ({ value: e.key, label: e.summary, hint: e.key, facets: [e.key] }));
     }
     case 'fixVersion':
       return projectValues(api.versions, projects, q);
@@ -249,7 +261,7 @@ export function specialValues(field: ListField, role: PeopleRole = 'participant'
     case 'sprint':
       return [...listFunctions('sprint'), { value: EMPTY, label: s.noSprint }];
     case 'epic':
-      return [{ value: EMPTY, label: s.noEpic }];
+      return [{ value: EMPTY, label: s.noEpic, facets: [''] }];
     case 'fixVersion':
       return [...listFunctions('version'), { value: EMPTY, label: s.noVersion }];
     case 'component':
@@ -310,6 +322,61 @@ export function labelOf(field: ListField, value: string, role?: PeopleRole): str
     default:
       return text;
   }
+}
+
+/**
+ * Issues per value of a field, keyed as the options' facets, on the search
+ * without that field's own filter: ticking a value shows what it adds. Null
+ * for a field the server does not count.
+ */
+export async function facetCounts(
+  filters: FilterState,
+  field: ListField,
+  project: string | undefined,
+): Promise<Record<string, number> | null> {
+  if (!FACET_FIELDS.includes(field)) return null;
+  const r = await api.facets({ jql: facetJql(filters, field), project, fields: field });
+  const counts = r.facets[field] ?? {};
+  rememberEpics(r);
+  if (field !== 'epic') return counts;
+  // Epics are counted by id and picked by key.
+  const byKey: Record<string, number> = {};
+  for (const [id, n] of Object.entries(counts)) {
+    const key = id === '' ? '' : r.epics[id]?.key;
+    if (key !== undefined) byKey[key] = n;
+  }
+  return byKey;
+}
+
+/** Names the epics a count response knows, for labelOf. */
+export function rememberEpics(r: Facets): void {
+  for (const e of Object.values(r.epics ?? {})) catalog.epics[e.key] = e.summary;
+}
+
+/** The status shortcuts: open (to do or in progress) and done. */
+export const OPEN: StatusCategory[] = ['todo', 'doing'];
+export const DONE: StatusCategory[] = ['done'];
+
+/** Whether categories are exactly a set. */
+export const sameCategories = (a: StatusCategory[], b: StatusCategory[]) =>
+  a.length === b.length && a.every((c) => b.includes(c));
+
+/** Status categories as they read on a button: "Open", "Done", "To do only". */
+function categorySummary(cats: StatusCategory[]): string {
+  if (cats.length === 0 || cats.length === 3) return '';
+  if (sameCategories(cats, OPEN)) return t.search.special.open;
+  if (sameCategories(cats, DONE)) return t.search.special.done;
+  return t.search.categoryOnly(formatList(cats.map((c) => categoryLabels[c])));
+}
+
+/** The names of a list field's chosen values, the status categories first. */
+export function chosenNames(filters: FilterState, field: ListField): string[] {
+  const names = (filters.values[field] ?? []).map((v) => labelOf(field, v));
+  if (field === 'status') {
+    const c = categorySummary(filters.categories);
+    if (c) names.unshift(c);
+  }
+  return names;
 }
 
 /** Whether a field's values are drawn with a mark: types and people. */
