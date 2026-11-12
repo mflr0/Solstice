@@ -2,7 +2,7 @@
 name: solstice-issue
 description: Pick, claim and deliver one ticket of the Solstice tracker (project SOL on solstice.suolumi.fr), coordinated with the other Claude sessions.
 disable-model-invocation: true
-argument-hint: "[SOL-N] [label or type...]"
+argument-hint: "[SOL-N | N] [label or type...]"
 ---
 
 Work one ticket of the SOL project from pick to merge. Tickets live on https://solstice.suolumi.fr, handled with the `mcp__solstice__*` tools. Code and pull requests live on GitHub, mflr0/Solstice. This skill holds the whole workflow, including what CLAUDE.md and memory also say. `pick.sh` sits next to this file and does the git and pull-request steps.
@@ -16,7 +16,7 @@ Every call re-reads the whole context, so make few of them: send independent cal
 1. In one turn, two `search_issues` calls:
    - Candidates: `project = SOL AND statusCategory != Done AND issuetype != Epic ORDER BY Rank ASC`, fields `summary, issuetype, status, labels, issuelinks, Epic Link`, `maxResults` 200.
    - Open bugs: `project = SOL AND issuetype = Bug AND statusCategory != Done`, fields `description`.
-2. With `SOL-N` in `$ARGUMENTS`, check that ticket only. Otherwise keep the tickets in **To Do**. Leave out Stories unless `story` or `enhancement` is a filter. Other words narrow the list to tickets with that label or type.
+2. With `SOL-N`, or a bare number `N` (meaning `SOL-N`), in `$ARGUMENTS`, check that ticket only. Otherwise keep the tickets in **To Do**. Leave out Stories unless `story` or `enhancement` is a filter. Other words narrow the list to tickets with that label or type.
 3. A ticket is **blocked** when an inward `is blocked by` link points to an issue whose status category isn't Done, or, unless it is a Bug, when its `In scope` line shares a path with an open bug's.
 4. **In Progress** tickets are claimed by another session. One is **stale**, and counts as To Do in its place, when both are true:
    - its last status change to In Progress, from `get_issue` with `expand: ["changelog"]`, is more than 24 h old;
