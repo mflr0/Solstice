@@ -275,7 +275,7 @@ export const de: Messages = {
 
   login: {
     title: 'Anmelden',
-    username: 'Benutzername',
+    username: 'Benutzername oder E-Mail-Adresse',
     password: 'Passwort',
     submit: 'Anmelden',
     pending: 'Anmeldung…',

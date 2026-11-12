@@ -107,7 +107,7 @@ func TestClientIP(t *testing.T) {
 // nobody else behind the proxy out. No database is needed: the lock is
 // checked before the password.
 func TestLoginThrottlingBehindTrustedProxy(t *testing.T) {
-	srv := New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	srv := withoutAddresses(New(nil, t.TempDir(), time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil))))
 	srv.SetTrustedProxies(parseProxies(t, "192.0.2.1"))
 	at := func(client string) *http.Request {
 		r := httptest.NewRequest("POST", "/api/login", nil)

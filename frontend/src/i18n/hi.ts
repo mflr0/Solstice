@@ -272,7 +272,7 @@ export const hi: Messages = {
 
   login: {
     title: 'साइन इन',
-    username: 'यूज़रनेम',
+    username: 'यूज़रनेम या ईमेल',
     password: 'पासवर्ड',
     submit: 'साइन इन करें',
     pending: 'साइन इन हो रहा है…',
