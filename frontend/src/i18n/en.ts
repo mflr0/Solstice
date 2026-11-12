@@ -269,7 +269,7 @@ export const en = {
 
   login: {
     title: 'Sign in',
-    username: 'Username',
+    username: 'Username or email',
     password: 'Password',
     submit: 'Sign in',
     pending: 'Signing in…',

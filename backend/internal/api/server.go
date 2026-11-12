@@ -53,8 +53,9 @@ type Server struct {
 	themes        *themes.Registry   // theme packages, built-in and stored
 
 	// Set by New; tests replace them to run without a database or a real wait.
-	verify func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
-	sleep  func(ctx context.Context, d time.Duration)                               // holds back a wrong answer
+	resolve func(ctx context.Context, typed string) (string, error)                  // finds the account named or addressed
+	verify  func(ctx context.Context, username, password string) (*auth.User, error) // checks a password
+	sleep   func(ctx context.Context, d time.Duration)                               // holds back a wrong answer
 
 	catMu   sync.Mutex
 	catalog *catalog
@@ -83,6 +84,9 @@ func New(db *sql.DB, dataDir string, tz *time.Location, log *slog.Logger) *Serve
 		maxStorage: int64(config.Defaults().HTTP.MaxStorage), streamsDone: make(chan struct{}),
 		tokenAud: map[int64]time.Time{}, oauthFetch: clientFetcher(),
 		registrations: newRegistrationLimit(), themes: themes.NewRegistry(db, dataDir, log)}
+	s.resolve = func(ctx context.Context, typed string) (string, error) {
+		return auth.ResolveLogin(ctx, s.db, typed)
+	}
 	s.verify = func(ctx context.Context, username, password string) (*auth.User, error) {
 		return auth.Authenticate(ctx, s.db, s.dir, username, password)
 	}
@@ -457,8 +461,13 @@ func (s *Server) authenticate(r *http.Request) (*auth.User, error) {
 // (account, client address), are locked after repeated failures; the account
 // alone is never locked, so the right password is always accepted, but its
 // wrong answers are held back once many have come in from any address.
+// username may be the account's email address: it counts as the account.
 func (s *Server) checkPassword(r *http.Request, username, password string) (*auth.User, error) {
-	userKey, ipKey := s.throttleKeys(r, username)
+	account, err := s.resolve(r.Context(), username)
+	if err != nil {
+		return nil, err
+	}
+	userKey, ipKey := s.throttleKeys(r, account)
 	if d := s.limiter.Locked(userKey, ipKey); d > 0 {
 		return nil, tooManyAttempts(d)
 	}
@@ -466,7 +475,6 @@ func (s *Server) checkPassword(r *http.Request, username, password string) (*aut
 	if err != nil {
 		return nil, err
 	}
-	account := auth.CanonicalUsername(username)
 	u, err := s.verify(r.Context(), account, password)
 	release()
 	switch {

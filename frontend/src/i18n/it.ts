@@ -271,7 +271,7 @@ export const it: Messages = {
 
   login: {
     title: 'Accesso',
-    username: 'Nome utente',
+    username: 'Nome utente o indirizzo e-mail',
     password: 'Password',
     submit: 'Accedi',
     pending: 'Accesso…',

@@ -111,6 +111,27 @@ func CanonicalUsername(typed string) string {
 	return strings.ToLower(strings.TrimSpace(typed))
 }
 
+// ResolveLogin turns what was typed in a sign-in's name field into the
+// canonical user name to sign in with: the name itself when an account has
+// it (user names may contain "@"), else the user name of the active account
+// with that email address, else the canonical typed name.
+func ResolveLogin(ctx context.Context, db *sql.DB, typed string) (string, error) {
+	name := CanonicalUsername(typed)
+	var found string
+	err := db.QueryRowContext(ctx, `SELECT username FROM users WHERE username = LOWER(?)`, name).Scan(&found)
+	if !errors.Is(err, sql.ErrNoRows) {
+		return name, err
+	}
+	err = db.QueryRowContext(ctx, `SELECT username FROM users WHERE email_key = LOWER(?) AND active`, name).Scan(&found)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return name, nil
+	case err != nil:
+		return name, err
+	}
+	return CanonicalUsername(found), nil
+}
+
 // Authenticate checks a user name and password. Jira hashes are upgraded to
 // Argon2id on the first successful sign-in. With a directory (nil for none),
 // the accounts of any directory (LDAP or OpenID Connect) are checked there,

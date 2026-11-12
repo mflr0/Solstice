@@ -15,7 +15,14 @@ import (
 )
 
 func quietServer() *Server {
-	return New(nil, "", time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	return withoutAddresses(New(nil, "", time.UTC, slog.New(slog.NewTextHandler(io.Discard, nil))))
+}
+
+// withoutAddresses makes a server without a database resolve every typed
+// name to itself.
+func withoutAddresses(s *Server) *Server {
+	s.resolve = func(_ context.Context, typed string) (string, error) { return auth.CanonicalUsername(typed), nil }
+	return s
 }
 
 func fromAddress(addr string) *http.Request {

@@ -268,7 +268,7 @@ export const fr: Messages = {
 
   login: {
     title: 'Connexion',
-    username: 'Identifiant',
+    username: 'Identifiant ou adresse e-mail',
     password: 'Mot de passe',
     submit: 'Se connecter',
     pending: 'Connexion…',
