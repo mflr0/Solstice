@@ -170,6 +170,21 @@ func IsDuplicate(err error) bool { return isDuplicate(err) }
 // IsDuplicateEmail tells a violation of the unique key on accounts' addresses.
 func IsDuplicateEmail(err error) bool { return isDuplicateEmail(err) }
 
+// UsernameTaken tells whether a lowercased login names an account, now,
+// as its Jira key, or formerly.
+func UsernameTaken(ctx context.Context, db rowQuerier, login string) (bool, error) {
+	return usernameTaken(ctx, db, login, 0)
+}
+
+// usernameTaken tells whether login names an account other than except, now,
+// as its Jira key, or formerly: an old name keeps finding its account.
+func usernameTaken(ctx context.Context, db rowQuerier, login string, except int64) (bool, error) {
+	var taken bool
+	err := db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE (username = ? OR user_key = ?) AND id <> ?)
+		OR EXISTS (SELECT 1 FROM user_aliases WHERE name = ? AND user_id <> ?)`, login, login, except, login, except).Scan(&taken)
+	return taken, err
+}
+
 func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
@@ -192,6 +207,11 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	in.Username = strings.ToLower(strings.TrimSpace(in.Username))
 	if !usernamePattern.MatchString(in.Username) {
 		return fail(http.StatusBadRequest, i18n.AccountUsernameInvalid)
+	}
+	if taken, err := usernameTaken(ctx, s.db, in.Username, 0); err != nil {
+		return err
+	} else if taken {
+		return fail(http.StatusConflict, i18n.AccountUsernameTaken)
 	}
 	if strings.TrimSpace(in.Name) == "" {
 		in.Name = in.Username
@@ -277,6 +297,7 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var in struct {
+		Username *string `json:"username"`
 		Name     *string `json:"name"`
 		Email    *string `json:"email"`
 		Active   *bool   `json:"active"`
@@ -304,6 +325,27 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	emailChanged := in.Email != nil && strings.TrimSpace(*in.Email) != before.Email
+	var rename string
+	if in.Username != nil {
+		if name := strings.ToLower(strings.TrimSpace(*in.Username)); name != before.Username {
+			rename = name
+		}
+	}
+	if rename != "" {
+		// The directory names its accounts: renamed here, the next sign-in
+		// under the old name would create a second one.
+		if before.Directory != "" {
+			return fail(http.StatusBadRequest, i18n.AccountUsernameFromDirectory)
+		}
+		if !usernamePattern.MatchString(rename) {
+			return fail(http.StatusBadRequest, i18n.AccountUsernameInvalid)
+		}
+		if taken, err := usernameTaken(ctx, s.db, rename, id); err != nil {
+			return err
+		} else if taken {
+			return fail(http.StatusConflict, i18n.AccountUsernameTaken)
+		}
+	}
 	// The profile asks for the current password before changing either, and
 	// refuses a token: this path must not get around that.
 	switch {
@@ -337,6 +379,23 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	defer tx.Rollback()
+	if rename != "" {
+		if _, err := tx.ExecContext(ctx, `UPDATE users SET username = ? WHERE id = ?`, rename, id); err != nil {
+			if isDuplicate(err) {
+				return fail(http.StatusConflict, i18n.AccountUsernameTaken)
+			}
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM user_aliases WHERE name = ?`, rename); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO user_aliases (name, user_id) VALUES (?, ?)`, before.Username, id); err != nil {
+			if isDuplicate(err) {
+				return fail(http.StatusConflict, i18n.AccountUsernameTaken)
+			}
+			return err
+		}
+	}
 	if in.Name != nil && strings.TrimSpace(*in.Name) != "" {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET display_name = ? WHERE id = ?`, strings.TrimSpace(*in.Name), id); err != nil {
 			return err

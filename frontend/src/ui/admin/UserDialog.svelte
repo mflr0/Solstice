@@ -17,7 +17,7 @@
   import type { AdminProjectRow } from '../../core/project-admin.js';
   import { holderLabels, permissionLabels, t } from '../../i18n/t.js';
   import { adminApi } from '../../lib/admin-api.js';
-  import { errorMessage } from '../../lib/api.js';
+  import { api, errorMessage } from '../../lib/api.js';
   import { publicSettings } from '../../lib/public-settings.svelte.js';
   import { session } from '../../lib/session.svelte.js';
   import Highlight from '../Highlight.svelte';
@@ -65,7 +65,11 @@
   /** Invitations need e-mail links to work on this instance. */
   const canInvite = $derived(isNew && publicSettings.value.emailLinks);
   const inviting = $derived(canInvite && form.invite);
-  const problems = $derived(userProblems({ ...form, invite: inviting }, isNew, minPassword));
+  /** A directory names its accounts: they keep the name it gives. */
+  const fromDirectory = $derived(!!user?.directory);
+  const problems = $derived(
+    userProblems({ ...form, invite: inviting }, isNew, minPassword, user?.username),
+  );
   const shown = (f: 'username' | 'email' | 'password') => {
     const p = problems[f];
     return (tried || touched[f]) && p ? t.usersAdmin.problems[p](minPassword) : '';
@@ -187,6 +191,8 @@
         onsaved(inviting ? t.usersAdmin.invited(who) : t.usersAdmin.created(who));
       } else {
         const patch: Parameters<typeof adminApi.updateUser>[1] = {};
+        const username = form.username.trim().toLowerCase();
+        if (!fromDirectory && username !== user.username) patch.username = username;
         if (form.name.trim() !== user.name) patch.name = form.name.trim();
         if (form.email.trim() !== user.email) patch.email = form.email.trim();
         if (!isSelf && form.admin !== user.admin) patch.admin = form.admin;
@@ -198,6 +204,7 @@
           if (Object.keys(patch).length) {
             await adminApi.updateUser(user.id, patch);
             saved = true;
+            if (isSelf && patch.username) session.me = await api.me();
           }
           if (groups && before.join() !== [...form.groups].sort().join()) {
             await adminApi.setUserGroups(user.id, form.groups);
@@ -245,7 +252,7 @@
         <input
           class="input mono"
           bind:value={form.username}
-          disabled={!isNew}
+          disabled={fromDirectory}
           autocomplete="off"
           spellcheck="false"
           aria-invalid={!!shown('username')}
@@ -254,8 +261,14 @@
         />
         {#if shown('username')}
           <span class="field-error">{shown('username')}</span>
-        {:else if isNew}
-          <span class="hint">{t.usersAdmin.usernameHint}</span>
+        {:else}
+          <span class="hint"
+            >{isNew
+              ? t.usersAdmin.usernameHint
+              : fromDirectory
+                ? t.usersAdmin.usernameFromDirectory
+                : t.usersAdmin.usernameRename}</span
+          >
         {/if}
       </label>
     </div>

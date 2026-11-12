@@ -408,3 +408,96 @@ func TestPersonPageHidesTheAddress(t *testing.T) {
 		t.Errorf("the administrator sees %q, want %q", page.Email, address)
 	}
 }
+
+// A renamed account signs in under its new name only; what was written under
+// the old one keeps finding it, and nobody else may take that name.
+func TestRenameAccount(t *testing.T) {
+	admin := login(t, "admin", "admin")
+	bob := unique("bob.")
+	var created struct{ ID int64 }
+	admin.call("POST", "/api/admin/users", map[string]any{"username": bob, "name": "Bob Renommé",
+		"password": "une phrase assez longue", "groups": []int64{groupID(t, "developpeurs")}}, 201, &created)
+	path := fmt.Sprintf("/api/admin/users/%d", created.ID)
+	t.Cleanup(func() { admin.do("PUT", path+"/groups", map[string]any{"groups": []int64{}}) })
+	session := login(t, bob, "une phrase assez longue")
+
+	key := newProject(t, admin, nil)
+	issue := createIssue(t, admin, key, "Pour Bob", "Voir [~"+bob+"]")
+	admin.call("PATCH", "/api/issues/"+issue, map[string]any{"assignee": created.ID}, 200, nil)
+
+	robert := unique("robert.")
+	admin.call("PATCH", path, map[string]any{"username": "Pas Valide"}, 400, nil)
+	admin.call("PATCH", path, map[string]any{"username": "paul.martin"}, 409, nil)
+	admin.call("PATCH", path, map[string]any{"username": " " + strings.ToUpper(robert) + " "}, 204, nil)
+
+	var u adminUser
+	admin.call("GET", path, nil, 200, &u)
+	if u.Username != robert {
+		t.Errorf("after the rename: %+v", u)
+	}
+	if status := session.get("/api/me", nil); status != 200 {
+		t.Errorf("a session after a rename: %d", status)
+	}
+	login(t, robert, "une phrase assez longue")
+	if status, _ := anonymousAt(t, ownServer(t)).do("POST", "/api/login",
+		map[string]string{"username": bob, "password": "une phrase assez longue"}); status != 401 {
+		t.Errorf("signed in under the old name: %d", status)
+	}
+
+	for _, q := range []string{"assignee = " + bob, "assignee = " + robert, "assignee WAS " + bob} {
+		if status, n := runSearch(t, admin, "project = "+key+" AND "+q); status != 200 || n != 1 {
+			t.Errorf("%s: %d, %d issues", q, status, n)
+		}
+	}
+	var refs struct{ Users map[string]string }
+	admin.call("POST", "/api/refs", map[string]any{"users": []string{bob}}, 200, &refs)
+	if refs.Users[bob] != "Bob Renommé" {
+		t.Errorf("refs for the old name: %v", refs.Users)
+	}
+
+	// The old name stays the account's: no one else takes it, it may take it back.
+	admin.call("POST", "/api/admin/users", map[string]any{"username": bob, "password": "une phrase assez longue"}, 409, nil)
+	other, _ := newAccount(t, admin, "une phrase assez longue")
+	admin.call("PATCH", fmt.Sprintf("/api/admin/users/%d", other), map[string]any{"username": bob}, 409, nil)
+	admin.call("PATCH", path, map[string]any{"username": bob}, 204, nil)
+	admin.call("PATCH", path, map[string]any{"username": robert}, 204, nil)
+	if aliases := pick(t, `SELECT GROUP_CONCAT(name ORDER BY name) FROM user_aliases WHERE user_id = ?`, created.ID); aliases != bob {
+		t.Errorf("aliases after renaming back and forth: %q", aliases)
+	}
+
+	var audit struct {
+		Entries []struct{ Details map[string]any }
+	}
+	admin.call("GET", "/api/admin/audit?action=user.update&q="+robert, nil, 200, &audit)
+	if len(audit.Entries) == 0 || at(audit.Entries[0].Details, "username", "from") != bob ||
+		at(audit.Entries[0].Details, "username", "to") != robert {
+		t.Errorf("audit of the rename: %+v", audit.Entries)
+	}
+
+	// The directory names its accounts.
+	ldap := unique("ldap.rename.")
+	directoryUser(t, ldap)
+	if _, err := testDB.Exec(`INSERT INTO users (username, display_name, directory) VALUES (?, ?, 'ldap')`, ldap, ldap); err != nil {
+		t.Fatal(err)
+	}
+	admin.call("PATCH", fmt.Sprintf("/api/admin/users/%d", userID(t, ldap)), map[string]any{"username": unique("autre.")}, 400, nil)
+
+	// Administrators may rename themselves and stay signed in; nobody renames
+	// themselves from the profile.
+	boss := unique("chef.")
+	var bossID struct{ ID int64 }
+	admin.call("POST", "/api/admin/users", map[string]any{"username": boss, "password": "une phrase assez longue",
+		"admin": true}, 201, &bossID)
+	self := login(t, boss, "une phrase assez longue")
+	renamed := unique("chef.renomme.")
+	self.call("PATCH", fmt.Sprintf("/api/admin/users/%d", bossID.ID), map[string]any{"username": renamed}, 204, nil)
+	var me struct{ Username string }
+	if status := self.get("/api/me", &me); status != 200 || me.Username != renamed {
+		t.Errorf("own session after renaming oneself: %d %+v", status, me)
+	}
+	plain := login(t, robert, "une phrase assez longue")
+	plain.do("PATCH", "/api/me", map[string]any{"username": unique("moi.")})
+	if name := pick(t, `SELECT username FROM users WHERE id = ?`, created.ID); name != robert {
+		t.Errorf("renamed from the profile: %q", name)
+	}
+}

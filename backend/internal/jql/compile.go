@@ -389,9 +389,11 @@ func (c *compiler) users(vals []Value) (sub string, empty bool, err error) {
 	}
 	if len(names) > 0 {
 		m := sqlq.Marks(len(names))
-		parts = append(parts, "SELECT id FROM users WHERE username IN ("+m+") OR user_key IN ("+m+") OR display_name IN ("+m+")")
+		parts = append(parts, "SELECT id FROM users WHERE username IN ("+m+") OR user_key IN ("+m+") OR display_name IN ("+m+")",
+			"SELECT user_id FROM user_aliases WHERE name IN ("+m+")")
 		c.bind(names, 1, strings.ToLower)
 		c.bind(names, 2, nil)
+		c.bind(names, 1, strings.ToLower)
 	}
 	return strings.Join(parts, " UNION "), empty, nil
 }

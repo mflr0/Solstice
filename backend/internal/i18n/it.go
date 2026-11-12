@@ -31,6 +31,7 @@ var it = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountNotFound:                  "Utente non trovato.",
 	AccountUsernameInvalid:           "Nome utente non valido: usa lettere minuscole, cifre e . _ @ -",
 	AccountUsernameTaken:             "Questo nome utente esiste già.",
+	AccountUsernameFromDirectory:     "Il nome utente di questo account viene dalla sua directory e non si può cambiare qui.",
 	AccountEmailInvalid:              "Indirizzo email non valido.",
 	AccountEmailTaken:                "Questo indirizzo email è già usato da un altro account.",
 	AccountOwnAdminRights:            "Non puoi rimuovere i tuoi diritti di amministratore.",

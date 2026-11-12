@@ -2578,6 +2578,9 @@ export const it: Messages = {
     name: 'Nome visualizzato',
     username: 'Nome utente',
     usernameHint: 'Per accedere: minuscole, cifre, . _ @ -',
+    usernameFromDirectory: 'Viene dalla directory: qui non si può cambiare.',
+    usernameRename:
+      'Minuscole, cifre, . _ @ -. Menzioni e filtri con il vecchio nome trovano ancora questo account.',
     email: 'Indirizzo e-mail',
     password: 'Password',
     passwordHint: (n: number) => `${n} caratteri almeno.`,

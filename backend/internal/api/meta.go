@@ -110,17 +110,36 @@ func (s *Server) refs(w http.ResponseWriter, r *http.Request) error {
 	}{map[string]string{}, map[string]bool{}}
 
 	if n := min(len(in.Users), 200); n > 0 {
-		args := make([]any, n)
-		for i, u := range in.Users[:n] {
-			args[i] = strings.ToLower(u)
+		asked := in.Users[:n]
+		args := make([]any, 0, 3*n)
+		for _, u := range asked {
+			args = append(args, strings.ToLower(u))
 		}
-		err := sqlq.Each(r.Context(), s.db, `SELECT username, display_name FROM users WHERE username IN (`+sqlq.Marks(n)+`)`,
+		for _, u := range asked {
+			args = append(args, u)
+		}
+		args = append(args, args[:n]...)
+		m := sqlq.Marks(n)
+		// rank 0 is a user name, 1 a Jira key, 2 a former user name: the first
+		// wins, and the name comes back as it was asked for, lowercased.
+		found := map[string]int{}
+		err := sqlq.Each(r.Context(), s.db, `SELECT username, 0, display_name FROM users WHERE username IN (`+m+`)
+			UNION ALL SELECT user_key, 1, display_name FROM users WHERE user_key IN (`+m+`)
+			UNION ALL SELECT a.name, 2, u.display_name FROM user_aliases a JOIN users u ON u.id = a.user_id
+				WHERE a.name IN (`+m+`)`,
 			func(rows *sql.Rows) error {
-				var username, name string
-				if err := rows.Scan(&username, &name); err != nil {
+				var match, name string
+				var rank int
+				if err := rows.Scan(&match, &rank, &name); err != nil {
 					return err
 				}
-				out.Users[username] = name
+				for _, u := range asked {
+					if u == match || rank != 1 && strings.ToLower(u) == match {
+						if prev, ok := found[u]; !ok || rank < prev {
+							out.Users[strings.ToLower(u)], found[u] = name, rank
+						}
+					}
+				}
 				return nil
 			}, args...)
 		if err != nil {

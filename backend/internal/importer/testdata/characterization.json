@@ -228,6 +228,10 @@
       "count": 8,
       "sha256": "a0375fe85acacda511addebdcfc2e52f76ca642ee7122e1f4f95a9e97b36813f"
     },
+    "user_aliases": {
+      "count": 0,
+      "sha256": "7ec45e4e550a7bfd8a0a823a4bf1ebd9a47a0ef203ddac620badf2dafd2e511c"
+    },
     "user_groups": {
       "count": 10,
       "sha256": "5864cd3e201e1318235b5a9e21d5ffb0eeae26a6af959f60a9800dbe816f0a52"

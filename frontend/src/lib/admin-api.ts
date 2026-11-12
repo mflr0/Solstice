@@ -110,7 +110,14 @@ export const adminApi = {
   createUser: (u: UserInput) => request<{ id: number }>('POST', '/api/admin/users', u),
   updateUser: (
     id: number,
-    patch: { name?: string; email?: string; active?: boolean; admin?: boolean; password?: string },
+    patch: {
+      username?: string;
+      name?: string;
+      email?: string;
+      active?: boolean;
+      admin?: boolean;
+      password?: string;
+    },
   ) => request<void>('PATCH', `/api/admin/users/${id}`, patch),
   setUserGroups: (id: number, groups: number[]) =>
     request<UserRow>('PUT', `/api/admin/users/${id}/groups`, { groups }),

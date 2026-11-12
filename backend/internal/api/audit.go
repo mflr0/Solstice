@@ -254,14 +254,14 @@ func (s *Server) putAuditSettings(w http.ResponseWriter, r *http.Request) error 
 // userSnapshot is what the audit log compares before and after a change to
 // an account.
 type userSnapshot struct {
-	Username, Name, Email string
-	Active, Admin         bool
+	Username, Name, Email, Directory string
+	Active, Admin                    bool
 }
 
 func (s *Server) userSnapshot(ctx context.Context, id int64) (userSnapshot, error) {
 	var u userSnapshot
-	err := s.db.QueryRowContext(ctx, `SELECT username, display_name, email, active, is_admin FROM users WHERE id = ?`, id).
-		Scan(&u.Username, &u.Name, &u.Email, &u.Active, &u.Admin)
+	err := s.db.QueryRowContext(ctx, `SELECT username, display_name, email, directory, active, is_admin FROM users WHERE id = ?`, id).
+		Scan(&u.Username, &u.Name, &u.Email, &u.Directory, &u.Active, &u.Admin)
 	return u, err
 }
 
@@ -280,7 +280,7 @@ func (s *Server) auditUserCreated(r *http.Request, id int64) {
 }
 
 // auditUserChange records what an administrator changed in an account:
-// name and e-mail, activation, administrator rights, password (never its
+// user name, display name and e-mail, activation, administrator rights, password (never its
 // value), and how many access tokens the change deleted.
 func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot, password bool, revoked int64) {
 	after, err := s.userSnapshot(r.Context(), id)
@@ -290,6 +290,7 @@ func (s *Server) auditUserChange(r *http.Request, id int64, before userSnapshot,
 	}
 	target := target(audit.TargetUser, id, after.Username)
 	changes := map[string]any{}
+	diff(changes, "username", before.Username, after.Username)
 	diff(changes, "name", before.Name, after.Name)
 	diff(changes, "email", before.Email, after.Email)
 	if len(changes) > 0 {

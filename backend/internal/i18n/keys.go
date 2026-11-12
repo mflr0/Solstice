@@ -32,6 +32,7 @@ const (
 	AccountNotFound                  Key = "AccountNotFound"
 	AccountUsernameInvalid           Key = "AccountUsernameInvalid"
 	AccountUsernameTaken             Key = "AccountUsernameTaken"
+	AccountUsernameFromDirectory     Key = "AccountUsernameFromDirectory"
 	AccountEmailInvalid              Key = "AccountEmailInvalid"
 	AccountEmailTaken                Key = "AccountEmailTaken"
 	AccountOwnAdminRights            Key = "AccountOwnAdminRights"

@@ -157,6 +157,18 @@ describe('user form', () => {
     expect(userProblems(f, false, 12)).toEqual({ email: 'emailInvalid' });
   });
 
+  it('checks the user name of an existing account once it changes', () => {
+    const f = { ...newUserForm(), username: 'Jira User' };
+    expect(userProblems(f, false, 12, 'jira user')).toEqual({});
+    expect(userProblems({ ...f, username: 'Robert Dupont' }, false, 12, 'jira user')).toEqual({
+      username: 'usernameInvalid',
+    });
+    expect(userProblems({ ...f, username: ' ' }, false, 12, 'jira user')).toEqual({
+      username: 'usernameRequired',
+    });
+    expect(userProblems({ ...f, username: 'Robert' }, false, 12, 'jira user')).toEqual({});
+  });
+
   it('suggests a user name from a display name', () => {
     expect(suggestUsername('Élodie Le Gall')).toBe('elodie.le.gall');
     expect(suggestUsername('  --Jean-Paul  ')).toBe('jean.paul');

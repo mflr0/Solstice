@@ -298,8 +298,10 @@ func (s *Service) mentioned(ctx context.Context, e *events.Event) (map[int64]boo
 	for _, n := range names {
 		args = append(args, n)
 	}
-	err := sqlq.Each(ctx, s.db, `SELECT id FROM users WHERE username IN (`+sqlq.Marks(len(names))+`) OR user_key IN (`+
-		sqlq.Marks(len(names))+`)`, func(rows *sql.Rows) error {
+	args = append(args, args[:len(names)]...)
+	m := sqlq.Marks(len(names))
+	err := sqlq.Each(ctx, s.db, `SELECT id FROM users WHERE username IN (`+m+`) OR user_key IN (`+m+`)
+		UNION SELECT user_id FROM user_aliases WHERE name IN (`+m+`)`, func(rows *sql.Rows) error {
 		var id int64
 		err := rows.Scan(&id)
 		out[id] = true

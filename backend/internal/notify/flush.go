@@ -160,16 +160,24 @@ func (s *Service) displayNames(ctx context.Context, mentions []string) (map[stri
 	for _, n := range mentions {
 		args = append(args, n)
 	}
-	err := sqlq.Each(ctx, s.db, `SELECT username, user_key, display_name FROM users WHERE username IN (`+
-		sqlq.Marks(len(mentions))+`) OR user_key IN (`+sqlq.Marks(len(mentions))+`)`, func(rows *sql.Rows) error {
-		var username, name string
-		var key sql.NullString
-		if err := rows.Scan(&username, &key, &name); err != nil {
+	args = append(args, args[:len(mentions)]...)
+	m := sqlq.Marks(len(mentions))
+	// rank 0 is a user name, 1 a Jira key, 2 a former user name: the first wins.
+	found := map[string]int{}
+	err := sqlq.Each(ctx, s.db, `SELECT username, 0, display_name FROM users WHERE username IN (`+m+`)
+		UNION ALL SELECT user_key, 1, display_name FROM users WHERE user_key IN (`+m+`)
+		UNION ALL SELECT a.name, 2, u.display_name FROM user_aliases a JOIN users u ON u.id = a.user_id
+			WHERE a.name IN (`+m+`)`, func(rows *sql.Rows) error {
+		var match, name string
+		var rank int
+		if err := rows.Scan(&match, &rank, &name); err != nil {
 			return err
 		}
 		for _, n := range mentions {
-			if strings.ToLower(n) == username || key.Valid && n == key.String {
-				out[n] = name
+			if n == match || rank != 1 && strings.ToLower(n) == match {
+				if prev, ok := found[n]; !ok || rank < prev {
+					out[n], found[n] = name, rank
+				}
 			}
 		}
 		return nil

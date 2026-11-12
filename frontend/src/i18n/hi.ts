@@ -2541,6 +2541,9 @@ export const hi: Messages = {
     name: 'दिखने वाला नाम',
     username: 'यूज़रनेम',
     usernameHint: 'साइन इन के लिए: छोटे अक्षर, अंक, . _ @ -',
+    usernameFromDirectory: 'डायरेक्टरी से आता है: यहाँ बदला नहीं जा सकता।',
+    usernameRename:
+      'छोटे अक्षर, अंक, . _ @ -. पुराने नाम वाले उल्लेख और फ़िल्टर इस खाते को अब भी ढूँढते हैं।',
     email: 'ईमेल पता',
     password: 'पासवर्ड',
     passwordHint: (n: number) => `${n} अक्षर कम से कम।`,
