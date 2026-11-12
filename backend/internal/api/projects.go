@@ -24,6 +24,9 @@ type projectOut struct {
 	CategoryID  *int64   `json:"categoryId"`
 	Open        int      `json:"open"`
 	Archived    bool     `json:"archived"`
+	// Member: the user browses the project by their own grants, not only as
+	// a global administrator.
+	Member bool `json:"member"`
 }
 
 // projectRow loads a project by key (or a former key).
@@ -78,6 +81,7 @@ func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) error {
 			p.CategoryID = &categoryID.Int64
 		}
 		p.Open = open[p.ID]
+		p.Member = sub.Member(p.ID)
 		leadOf[p.ID] = lead
 		leads = append(leads, lead.Int64)
 		list = append(list, p)
@@ -139,6 +143,7 @@ func (s *Server) getProject(w http.ResponseWriter, r *http.Request) error {
 		Scan(&p.ID, &p.Key, &p.Name, &desc, &lead, &categoryID, &category, &defaultAssignee, &p.Archived); err != nil {
 		return err
 	}
+	p.Member = sub.Member(id)
 	p.Description, p.Category = sqlq.String(desc), sqlq.String(category)
 	if categoryID.Valid {
 		p.CategoryID = &categoryID.Int64
@@ -271,7 +276,7 @@ func (s *Server) browsableProject(r *http.Request) (*perm.Subject, int64, error)
 	if err != nil {
 		return nil, 0, err
 	}
-	if !sub.Admin && !sub.CanBrowseProject(id) {
+	if !sub.CanBrowseProject(id) {
 		return nil, 0, errNotFound
 	}
 	return sub, id, nil

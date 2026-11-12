@@ -286,8 +286,7 @@ func TestLiveEventsRespectPermissions(t *testing.T) {
 	}()
 	time.Sleep(200 * time.Millisecond) // let the subscription register
 
-	// Global administrators have no implicit access to content: someone from
-	// the rh group makes both changes.
+	// Someone from the rh group makes both changes.
 	actor := login(t, "chloe.simon", jirafixture.Password)
 	hidden := pick(t, `SELECT `+keyExpr+` FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' AND i.security_level_id IS NULL LIMIT 1`)

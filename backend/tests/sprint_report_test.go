@@ -30,6 +30,8 @@ type sprintReport struct {
 // the issues the viewer can't browse.
 func TestSprintReport(t *testing.T) {
 	marie := login(t, "marie.durand", jirafixture.Password)
+	// A global administrator sees every issue: a developer reads the report.
+	paul := login(t, "paul.martin", jirafixture.Password)
 	board, sprint := scopeBoard(t, marie, "WEB")
 	path := "/api/boards/" + board
 	reportPath := fmt.Sprintf("%s/sprints/%d/report", path, sprint)
@@ -67,7 +69,7 @@ func TestSprintReport(t *testing.T) {
 
 	move(map[string]any{"issue": a, "sprint": sprint})
 	move(map[string]any{"issue": b, "sprint": sprint})
-	// An RH issue in the sprint: marie can't browse it.
+	// An RH issue in the sprint: paul can't browse it.
 	hidden := pick(t, `SELECT CAST(i.id AS CHAR) FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' ORDER BY i.id LIMIT 1`)
 	if _, err := testDB.Exec(`INSERT INTO sprint_issues (sprint_id, issue_id) VALUES (?, ?)`, sprint, hidden); err != nil {
@@ -111,7 +113,7 @@ func TestSprintReport(t *testing.T) {
 
 	// No estimate on the board: issues are counted.
 	var r sprintReport
-	marie.call("GET", reportPath, nil, 200, &r)
+	paul.call("GET", reportPath, nil, 200, &r)
 	if r.Estimate != "" {
 		t.Errorf("estimate %q, want none", r.Estimate)
 	}
@@ -121,7 +123,7 @@ func TestSprintReport(t *testing.T) {
 	// Estimated in hours of original estimate.
 	marie.call("PUT", path, map[string]any{"estimate": "timeoriginalestimate"}, 200, nil)
 	r = sprintReport{}
-	marie.call("GET", reportPath, nil, 200, &r)
+	paul.call("GET", reportPath, nil, 200, &r)
 	check("estimated", r, map[string]float64{"committed": 5, "added": 1, "removed": 3, "completed": 2, "notCompleted": 1},
 		5, []float64{6, 3, 1})
 
@@ -139,14 +141,14 @@ func TestSprintReport(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	move(map[string]any{"issue": c, "column": doneCol})
 	r = sprintReport{}
-	marie.call("GET", reportPath, nil, 200, &r)
+	paul.call("GET", reportPath, nil, 200, &r)
 	check("closed", r, map[string]float64{"committed": 5, "added": 1, "removed": 3, "completed": 2, "notCompleted": 1},
 		5, []float64{6, 3, 1})
 
 	// Someone who doesn't see the board doesn't see its report.
 	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, board)
 	marie.call("PATCH", "/api/filters/"+filter, map[string]any{"shares": []map[string]any{}}, 200, nil)
-	if status := login(t, "paul.martin", jirafixture.Password).get(reportPath, nil); status != 404 {
+	if status := paul.get(reportPath, nil); status != 404 {
 		t.Errorf("paul.martin, without the board: %d, want 404", status)
 	}
 }

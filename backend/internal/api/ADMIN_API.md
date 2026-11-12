@@ -25,8 +25,9 @@ Conventions (as for the rest of `/api`):
   /api/admin/fields/{id}/options`.
 - "Global admin" means `admin: true` in `GET /api/me`. "Project admin" means
   the `admin` permission in that project (`can.configure` in
-  `GET /api/projects/{key}`); global admins count as project admins for
-  configuration (not for content).
+  `GET /api/projects/{key}`); global admins hold every permission in every
+  project, content included (an archived project stays read-only), but are
+  not assignable or notified where no grant names them.
 - Dates: `YYYY-MM-DD` for days, RFC 3339 for instants (UTC).
 - `userRef` = `{id, username, name, active}`; `idName` = `{id, name}`;
   `typeRef` = `{id, name, subtask}`.
@@ -338,7 +339,10 @@ changing its key.
 ### Read
 
 `GET /api/projects` lists active projects. `?archived=1` also lists archived
-ones. Each project now has `archived` (bool).
+ones. Each project now has `archived` (bool) and `member` (bool): true
+when the user's own grants let them browse it, false when they see it only
+as a global admin. A global admin sees every project; the top bar project
+switcher lists only those with `member`.
 
 `GET /api/projects/{key}` (unchanged shape) now also has
 `project.archived`, `project.categoryId` (number | null) and, in
