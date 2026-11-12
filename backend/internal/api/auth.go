@@ -287,6 +287,9 @@ func (s *Server) updateMe(w http.ResponseWriter, r *http.Request) error {
 	defer tx.Rollback()
 	for column, v := range sets {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET `+column+` = ? WHERE id = ?`, v, u.ID); err != nil {
+			if isDuplicateEmail(err) {
+				return fail(http.StatusConflict, i18n.AccountEmailTaken)
+			}
 			return err
 		}
 	}

@@ -96,6 +96,7 @@ func (r *run) importUsers() error {
 	ins := r.inserter("users", "id", "username", "user_key", "display_name", "email", "password_hash", "active")
 	var id int64
 	noPassword, placeholders := 0, 0
+	emails := map[string]bool{}
 	add := func(lower string, key any, u cwdUser, found bool) error {
 		id++
 		byName[lower] = id
@@ -113,7 +114,8 @@ func (r *run) importUsers() error {
 		} else if u.active {
 			noPassword++
 		}
-		return ins.add(id, lower, key, truncate(u.display, sqlq.VarcharWidth), truncate(u.email, sqlq.VarcharWidth), hash, u.active)
+		email := r.claimEmail(emails, lower, truncate(u.email, sqlq.VarcharWidth))
+		return ins.add(id, lower, key, truncate(u.display, sqlq.VarcharWidth), email, hash, u.active)
 	}
 	for _, a := range appUsers {
 		if _, dup := byName[a.lower]; dup {
@@ -157,6 +159,21 @@ func (r *run) importUsers() error {
 		r.rep.warn(i18n.N(placeholders, i18n.ImportWarnDeletedUsersOne, i18n.ImportWarnDeletedUsersMany))
 	}
 	return nil
+}
+
+// claimEmail returns email, or "" when an account imported before has it in
+// any case (taken), which the report notes: an address names one account.
+func (r *run) claimEmail(taken map[string]bool, username, email string) string {
+	key := strings.ToLower(email)
+	if key == "" {
+		return email
+	}
+	if taken[key] {
+		r.rep.warn(i18n.M(i18n.ImportWarnEmailTaken, email, username))
+		return ""
+	}
+	taken[key] = true
+	return email
 }
 
 func lessRank(a, b [2]int64) bool {

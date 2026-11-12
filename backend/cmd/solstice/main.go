@@ -427,6 +427,9 @@ func runUser(ctx context.Context, args []string) error {
 		}
 		res, err := conn.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
 			VALUES (?, ?, ?, ?, ?)`, login, acc.name, acc.email, hash, *admin)
+		if api.IsDuplicateEmail(err) {
+			return fmt.Errorf("another account has the address %q", acc.email)
+		}
 		if api.IsDuplicate(err) {
 			return fmt.Errorf("an account named %q already exists", login)
 		}
