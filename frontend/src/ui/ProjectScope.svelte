@@ -21,7 +21,8 @@
     loading = true;
     api
       .projects()
-      .then((p) => (projects = p))
+      // A global administrator sees every project; the switcher keeps to their own.
+      .then((p) => (projects = p.filter((x) => x.member)))
       .catch((e: unknown) => {
         scopeMenu.open = false;
         notify(errorMessage(e), 'error');

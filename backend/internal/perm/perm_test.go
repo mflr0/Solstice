@@ -187,33 +187,56 @@ func TestArchivedProjectIsReadOnly(t *testing.T) {
 	}
 }
 
-// TestAdministratorHasNoImplicitAccess checks that the admin flag grants
-// nothing by itself and does not bypass a security level.
-func TestAdministratorHasNoImplicitAccess(t *testing.T) {
-	const p int64 = 7
+// TestAdministratorBypass checks that a global administrator holds every
+// permission in a project nobody granted them, an archived one staying
+// read-only, while a plain user without grants gets nothing.
+func TestAdministratorBypass(t *testing.T) {
+	const p, archived int64 = 7, 8
 	r := testRules()
-	admin := subject(r, 1, true)
-	if admin.Can(Browse, p, nil) {
-		t.Error("admin without a grant sees the project")
-	}
-	if admin.CanSee(Issue{ProjectID: p}) {
-		t.Error("admin without a grant sees an issue")
-	}
-	if admin.CanBrowseProject(p) {
-		t.Error("admin without a grant browses the project")
-	}
-
-	// With the same grant, an administrator and a plain user are equal.
-	r.grant(p, Browse, Grant{Holder: User, UserID: 1})
-	if !admin.Can(Browse, p, nil) || !subject(r, 1, false).Can(Browse, p, nil) {
-		t.Error("admin and plain user should both get the direct grant")
-	}
-
-	// A security level still hides the issue from an administrator outside it.
+	r.leads[p], r.leads[archived] = 2, 2
+	r.archived[archived] = true
+	r.grant(p, Browse, Grant{Holder: Group, GroupID: 3})
+	r.groupID["g3"] = 3
 	r.levels[21] = level{project: p, members: []Grant{{Holder: User, UserID: 2}}}
-	is := Issue{ProjectID: p, SecurityLevel: 21}
-	if admin.CanSee(is) {
-		t.Error("admin outside the security level sees the issue")
+	secret := Issue{ProjectID: p, SecurityLevel: 21}
+
+	for _, c := range []struct {
+		name  string
+		admin bool
+	}{{"admin", true}, {"plain user", false}} {
+		sub := subject(r, 1, c.admin)
+		want := c.admin
+		checks := []struct {
+			what string
+			got  bool
+		}{
+			{"CanBrowseProject", sub.CanBrowseProject(p)},
+			{"Can(Edit)", sub.Can(Edit, p, nil)},
+			{"Can(Edit) on an issue", sub.Can(Edit, p, &Issue{ProjectID: p})},
+			{"CanSee at a security level", sub.CanSee(secret)},
+			{"SeesRestricted", sub.SeesRestricted(p, "g3")},
+			{"Can(Browse) on an archived project", sub.Can(Browse, archived, nil)},
+		}
+		for _, ch := range checks {
+			if ch.got != want {
+				t.Errorf("%s: %s = %v, want %v", c.name, ch.what, ch.got, want)
+			}
+		}
+		if sub.Can(Edit, archived, nil) {
+			t.Errorf("%s: Can(Edit) on an archived project = true, want false", c.name)
+		}
+		if sub.Member(p) {
+			t.Errorf("%s: Member = true without a grant", c.name)
+		}
+		if vis, _ := sub.VisibleSQL("i"); (vis == "TRUE") != c.admin {
+			t.Errorf("%s: VisibleSQL = %q", c.name, vis)
+		}
+	}
+
+	member := subject(r, 1, true)
+	addGroup(member, 3, "g3")
+	if !member.Member(p) {
+		t.Error("admin in the granted group: Member = false, want true")
 	}
 }
 

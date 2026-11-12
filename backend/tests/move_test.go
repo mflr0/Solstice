@@ -849,10 +849,13 @@ func TestMoveChoosingOrRemovingTheLevelTakesTheSecurityRightInBothProjects(t *te
 // the source group in the source, and of another group in the target.
 type restrictedMove struct {
 	*moveEnv
-	srcGroup, dstGroup, otherGroup namedGroup // the source group, one with members in the target, the administrator's there
-	restricted                     []int64    // comments restricted to the source group
-	worklog                        int64
-	groupComment                   int64
+	srcGroup, dstGroup, otherGroup namedGroup // the source group, one with members in the target, the reader's there
+	// reader is in the groups of the administrator, without the global
+	// administrator's bypass of restrictions.
+	reader       *client
+	restricted   []int64 // comments restricted to the source group
+	worklog      int64
+	groupComment int64
 }
 
 type namedGroup struct {
@@ -887,6 +890,12 @@ func newRestrictedMove(t *testing.T) *restrictedMove {
 	projectMember(t, e.srcID, e.srcGroup.ID, "admin")
 	projectMember(t, e.dstID, e.otherGroup.ID, "admin")
 	projectMember(t, e.dstID, e.dstGroup.ID, "paul.martin")
+	e.reader = login(t, "jeanne.dupont", jirafixture.Password) // developpeurs
+	projectMember(t, e.srcID, e.srcGroup.ID, "jeanne.dupont")
+	projectMember(t, e.dstID, e.otherGroup.ID, "jeanne.dupont")
+	moveInsert(t, `INSERT INTO security_level_members (level_id, holder, user_id) VALUES (?, 'user', ?)`,
+		e.levelDst, userID(t, "jeanne.dupont"))
+	e.refreshRules(e.dst)
 	admin := userID(t, "admin")
 	comment := func(issue int64, body string, group any) int64 {
 		return moveInsert(t, `INSERT INTO comments (issue_id, author_id, body, created_at, updated_at, visibility_group)
@@ -901,11 +910,11 @@ func newRestrictedMove(t *testing.T) *restrictedMove {
 	return e
 }
 
-// seen lists the ids of the comments of an issue the user can read.
+// seen lists the ids of the comments of an issue the reader can read.
 func (e *restrictedMove) seen(key string) []int64 {
 	e.t.Helper()
 	var list []commentOut
-	e.admin.call("GET", "/api/issues/"+key+"/comments", nil, 200, &list)
+	e.reader.call("GET", "/api/issues/"+key+"/comments", nil, 200, &list)
 	var out []int64
 	for _, c := range list {
 		out = append(out, c.ID)
@@ -988,7 +997,7 @@ func TestMoveRestrictsProjectGroupItemsToAGroupOfTheTarget(t *testing.T) {
 		t.Errorf("group-restricted comment: %q", g)
 	}
 
-	// The administrator is in another group of the target: the items are hidden
+	// The reader is in another group of the target: the items are hidden
 	// from them, until they are a project member of the chosen one there.
 	hidden := func(want bool) {
 		t.Helper()
@@ -998,7 +1007,7 @@ func TestMoveRestrictsProjectGroupItemsToAGroupOfTheTarget(t *testing.T) {
 		}
 	}
 	hidden(true)
-	projectMember(t, e.dstID, e.dstGroup.ID, "admin")
+	projectMember(t, e.dstID, e.dstGroup.ID, "jeanne.dupont")
 	hidden(false)
 }
 
@@ -1011,11 +1020,11 @@ func TestMoveKeepsGroupRestrictedItemsOnTheirGroupWhenAsked(t *testing.T) {
 	if n := e.onGroup("comments", e.srcGroup.Name); n != 2 || e.onGroup("worklogs", e.srcGroup.Name) != 1 {
 		t.Errorf("%d comments kept on the group, want 2, and the work log", n)
 	}
-	// Its members are now those of the target: the administrator was one in the source only.
+	// Its members are now those of the target: the reader was one in the source only.
 	if slices.Contains(e.seen(moved.Key), e.restricted[0]) {
 		t.Error("a project member of the group in the source only reads the comment in the target")
 	}
-	projectMember(t, e.dstID, e.srcGroup.ID, "admin")
+	projectMember(t, e.dstID, e.srcGroup.ID, "jeanne.dupont")
 	if !slices.Contains(e.seen(moved.Key), e.restricted[0]) {
 		t.Error("a project member of the group in the target does not read the comment")
 	}
@@ -1052,7 +1061,7 @@ func TestMoveRestrictsProjectGroupItemsToAGlobalGroup(t *testing.T) {
 	if slices.Contains(e.seen(moved.Key), e.restricted[0]) {
 		t.Error("a user outside the group reads the comment")
 	}
-	e.admin.call("POST", fmt.Sprintf("/api/admin/groups/%d/members", pivot.ID), map[string]any{"users": []int64{userID(t, "admin")}}, 200, nil)
+	e.admin.call("POST", fmt.Sprintf("/api/admin/groups/%d/members", pivot.ID), map[string]any{"users": []int64{userID(t, "jeanne.dupont")}}, 200, nil)
 	if !slices.Contains(e.seen(moved.Key), e.restricted[0]) {
 		t.Error("a member of the group does not read the comment")
 	}

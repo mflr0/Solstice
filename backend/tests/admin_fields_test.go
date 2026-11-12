@@ -188,13 +188,13 @@ func TestCustomFields(t *testing.T) {
 	}
 }
 
-// A global administrator lists a project's fields without browsing it, to lay
-// out its forms; another user who doesn't browse it gets a 404.
+// A global administrator opens and lists the fields of a project nobody
+// granted them; another user who doesn't browse it gets a 404.
 func TestProjectFieldsAdminOutside(t *testing.T) {
 	admin := login(t, "admin", "admin")
 	lea := login(t, "lea.richard", jirafixture.Password)
 	key := newProject(t, admin, map[string]any{"lead": nil})
-	admin.call("GET", "/api/projects/"+key, nil, 404, nil)
+	admin.call("GET", "/api/projects/"+key, nil, 200, nil)
 	admin.call("GET", "/api/projects/"+key+"/fields", nil, 200, nil)
 	lea.call("GET", "/api/projects/"+key+"/fields", nil, 404, nil)
 }

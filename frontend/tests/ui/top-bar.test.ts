@@ -15,8 +15,10 @@ vi.mock('../../src/lib/api.js', () => ({
     themes: () => import('./themes-fixture.js').then((f) => ({ contract: 1, themes: f.THEMES })),
     projects: () =>
       Promise.resolve([
-        { id: 1, key: 'ALPHA', name: 'Alpha' },
-        { id: 2, key: 'BETA', name: 'Beta' },
+        { id: 1, key: 'ALPHA', name: 'Alpha', member: true },
+        { id: 2, key: 'BETA', name: 'Beta', member: true },
+        // Seen only as a global administrator: not in the switcher.
+        { id: 3, key: 'GAMMA', name: 'Gamma', member: false },
       ]),
     issues: () => Promise.resolve({ issues: [] }),
     users: () => Promise.resolve([]),

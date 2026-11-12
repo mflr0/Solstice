@@ -340,6 +340,8 @@ export interface Project {
   lead: UserRef | null;
   category: string | null;
   open: number;
+  /** The user browses it by their own grants, not only as a global administrator. */
+  member: boolean;
 }
 
 export interface Version {

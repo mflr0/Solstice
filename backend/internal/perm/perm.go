@@ -395,10 +395,14 @@ func (s *Subject) holds(g Grant, project int64, is *Issue) bool {
 
 // Can reports whether the subject has permission p in a project, or on an
 // issue when is is not nil. Any action on an issue also requires seeing it.
-// An archived project is read-only: only Browse is ever granted there.
+// An archived project is read-only: only Browse is ever granted there. A
+// global administrator holds every other permission everywhere.
 func (s *Subject) Can(p string, project int64, is *Issue) bool {
 	if p != Browse && s.rules.archived[project] {
 		return false
+	}
+	if s.Admin {
+		return true
 	}
 	if !s.decide(p, project, is) {
 		return false
@@ -415,6 +419,10 @@ func (s *Subject) CanSee(is Issue) bool { return s.Can(Browse, is.ProjectID, &is
 // CanBrowseProject reports whether the subject sees the project at all,
 // possibly only the issues it reported or is assigned.
 func (s *Subject) CanBrowseProject(project int64) bool { return s.browseMask(project) != 0 }
+
+// Member reports whether the subject's own grants let it browse the project,
+// leaving out the global administrator's bypass.
+func (s *Subject) Member(project int64) bool { return s.grantedBrowseMask(project) != 0 }
 
 // Levels of rules, from the most specific.
 const (
@@ -509,6 +517,14 @@ const (
 // browseMask returns the relations to an issue of a project under which the
 // subject may see it.
 func (s *Subject) browseMask(project int64) int {
+	if s.Admin {
+		return asAny
+	}
+	return s.grantedBrowseMask(project)
+}
+
+// grantedBrowseMask is browseMask by the rules alone.
+func (s *Subject) grantedBrowseMask(project int64) int {
 	relative := func(rl Rule) bool { return rl.Holder == Reporter || rl.Holder == Assignee }
 	if !slices.ContainsFunc(s.rules.project[project][Browse], relative) &&
 		!slices.ContainsFunc(s.rules.global[Browse], relative) {
@@ -534,7 +550,7 @@ func (s *Subject) browseMask(project int64) int {
 }
 
 func (s *Subject) passesLevel(is *Issue) bool {
-	if is.SecurityLevel == 0 {
+	if s.Admin || is.SecurityLevel == 0 {
 		return true
 	}
 	lv, ok := s.rules.levels[is.SecurityLevel]
@@ -552,7 +568,7 @@ func (s *Subject) passesLevel(is *Issue) bool {
 // SeesRestricted reports whether the subject sees a comment or work log of
 // a project restricted to a group (by name; "" for none).
 func (s *Subject) SeesRestricted(project int64, group string) bool {
-	if group == "" {
+	if s.Admin || group == "" {
 		return true
 	}
 	id, ok := s.rules.groupID[group]
@@ -562,8 +578,12 @@ func (s *Subject) SeesRestricted(project int64, group string) bool {
 // VisibleSQL returns a SQL condition on the issues table (under alias) that
 // keeps only the issues the subject may see, with its bind arguments, or
 // "FALSE" and no arguments when it sees no project. Ids come in ascending
-// order, so a subject gets the same SQL every time.
+// order, so a subject gets the same SQL every time. A global administrator
+// sees every issue: "TRUE".
 func (s *Subject) VisibleSQL(alias string) (string, []any) {
+	if s.Admin {
+		return "TRUE", nil
+	}
 	var projects visible
 	for project := range s.rules.browsable() {
 		projects.addMask(project, s.browseMask(project))

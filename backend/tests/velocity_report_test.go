@@ -24,6 +24,8 @@ type velocityReport struct {
 // browse.
 func TestVelocityReport(t *testing.T) {
 	marie := login(t, "marie.durand", jirafixture.Password)
+	// A global administrator sees every issue: a developer reads the report.
+	paul := login(t, "paul.martin", jirafixture.Password)
 	board, first := scopeBoard(t, marie, "WEB")
 	second := scopeSprint(t, marie, board)
 	path := "/api/boards/" + board
@@ -65,7 +67,7 @@ func TestVelocityReport(t *testing.T) {
 	velocity := func(query string) velocityReport {
 		t.Helper()
 		var v velocityReport
-		marie.call("GET", velocityPath+query, nil, 200, &v)
+		paul.call("GET", velocityPath+query, nil, 200, &v)
 		return v
 	}
 	check := func(what string, v velocityReport, want ...[3]float64) {
@@ -87,7 +89,7 @@ func TestVelocityReport(t *testing.T) {
 	for _, key := range []string{carried, removed, finished} {
 		move(map[string]any{"issue": key, "sprint": first})
 	}
-	// An RH issue in the sprint: marie can't browse it.
+	// An RH issue in the sprint: paul can't browse it.
 	hidden := pick(t, `SELECT CAST(i.id AS CHAR) FROM issues i JOIN projects p ON p.id = i.project_id
 		WHERE p.pkey = 'RH' ORDER BY i.id LIMIT 1`)
 	if _, err := testDB.Exec(`INSERT INTO sprint_issues (sprint_id, issue_id) VALUES (?, ?)`, first, hidden); err != nil {
@@ -134,7 +136,7 @@ func TestVelocityReport(t *testing.T) {
 	// Someone who doesn't see the board doesn't see its velocity.
 	filter := pick(t, `SELECT CAST(filter_id AS CHAR) FROM boards WHERE id = ?`, board)
 	marie.call("PATCH", "/api/filters/"+filter, map[string]any{"shares": []map[string]any{}}, 200, nil)
-	if status := login(t, "paul.martin", jirafixture.Password).get(velocityPath, nil); status != 404 {
+	if status := paul.get(velocityPath, nil); status != 404 {
 		t.Errorf("paul.martin, without the board: %d, want 404", status)
 	}
 }
