@@ -2592,6 +2592,9 @@ export const de: Messages = {
     name: 'Anzeigename',
     username: 'Benutzername',
     usernameHint: 'Für die Anmeldung: Kleinbuchstaben, Ziffern, . _ @ -',
+    usernameFromDirectory: 'Kommt aus dem Verzeichnis und lässt sich hier nicht ändern.',
+    usernameRename:
+      'Kleinbuchstaben, Ziffern, . _ @ -. Erwähnungen und Filter mit dem alten Namen finden dieses Konto weiterhin.',
     email: 'E-Mail-Adresse',
     password: 'Passwort',
     passwordHint: (n: number) => `Mindestens ${n} Zeichen.`,

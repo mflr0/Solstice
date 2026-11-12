@@ -39,6 +39,7 @@ var userRows = []struct{ table, column string }{
 	{"api_tokens", "user_id"},
 	{"notification_prefs", "user_id"},
 	{"sessions", "user_id"},
+	{"user_aliases", "user_id"},
 	{"user_preferences", "user_id"},
 }
 
@@ -299,6 +300,11 @@ func (r *run) putBack(k *kept) error {
 		if _, err := r.restore(s); err != nil {
 			errs = append(errs, err)
 		}
+	}
+	// A user name Jira brings in wins over a local account's former name.
+	if _, err := r.dst.ExecContext(r.ctx, `DELETE a FROM user_aliases a JOIN users u
+		ON (u.username = a.name OR u.user_key = a.name) AND u.id <> a.user_id`); err != nil {
+		errs = append(errs, err)
 	}
 	for id, name := range k.hooks {
 		if _, err := r.dst.ExecContext(r.ctx, `UPDATE webhooks SET created_by = (SELECT id FROM users WHERE username = ?)

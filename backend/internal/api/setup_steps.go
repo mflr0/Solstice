@@ -637,6 +637,11 @@ func (w *Setup) createAdmin(rw http.ResponseWriter, r *http.Request) error {
 		if !usernamePattern.MatchString(username) {
 			return fail(http.StatusBadRequest, i18n.AccountUsernameInvalid)
 		}
+		if taken, err := usernameTaken(ctx, w.db, username, 0); err != nil {
+			return err
+		} else if taken {
+			return fail(http.StatusConflict, i18n.AccountUsernameTaken)
+		}
 		if name == "" {
 			name = username
 		}

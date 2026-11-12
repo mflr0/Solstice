@@ -2543,6 +2543,9 @@ export const en = {
     name: 'Display name',
     username: 'Username',
     usernameHint: 'To sign in: lowercase, digits, . _ @ -',
+    usernameFromDirectory: 'Comes from the directory: it can’t be changed here.',
+    usernameRename:
+      'Lowercase, digits, . _ @ -. Mentions and filters that use the old name still find this account.',
     email: 'Email address',
     password: 'Password',
     passwordHint: (n: number) => `At least ${n} characters.`,

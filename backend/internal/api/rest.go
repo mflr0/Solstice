@@ -537,10 +537,13 @@ func userOf(users map[int64]*jiraUser, id int64) any {
 	return nil
 }
 
-// userByName finds an account by user name, or by Jira user key.
+// userByName finds an account by user name, by Jira user key, or by a
+// name it had before a rename, in that order.
 func (s *Server) userByName(ctx context.Context, name string) (int64, bool) {
 	var id int64
 	err := s.db.QueryRowContext(ctx, `SELECT id FROM users WHERE username = LOWER(?) OR user_key = ?
-		ORDER BY username = LOWER(?) DESC LIMIT 1`, name, name, name).Scan(&id)
+			OR id IN (SELECT user_id FROM user_aliases WHERE name = LOWER(?))
+		ORDER BY username = LOWER(?) DESC, COALESCE(user_key = ?, FALSE) DESC LIMIT 1`,
+		name, name, name, name, name).Scan(&id)
 	return id, err == nil
 }

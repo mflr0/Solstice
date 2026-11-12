@@ -32,6 +32,7 @@ var hi = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountNotFound:                  "यूज़र नहीं मिला।",
 	AccountUsernameInvalid:           "अमान्य यूज़रनेम: केवल छोटे अक्षर, अंक और . _ @ - इस्तेमाल करें",
 	AccountUsernameTaken:             "यह यूज़रनेम पहले से मौजूद है।",
+	AccountUsernameFromDirectory:     "इस खाते का यूज़रनेम उसकी डायरेक्टरी से आता है और यहाँ बदला नहीं जा सकता।",
 	AccountEmailInvalid:              "ईमेल पता अमान्य है।",
 	AccountEmailTaken:                "यह ईमेल पता पहले से किसी दूसरे खाते का है।",
 	AccountOwnAdminRights:            "आप अपने ही एडमिन अधिकार नहीं हटा सकते।",

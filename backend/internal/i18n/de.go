@@ -31,6 +31,7 @@ var de = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountNotFound:                  "Benutzer nicht gefunden.",
 	AccountUsernameInvalid:           "Ungültiger Benutzername: erlaubt sind Kleinbuchstaben, Ziffern und . _ @ -",
 	AccountUsernameTaken:             "Dieser Benutzername ist bereits vergeben.",
+	AccountUsernameFromDirectory:     "Der Benutzername dieses Kontos kommt aus seinem Verzeichnis und kann hier nicht geändert werden.",
 	AccountEmailInvalid:              "Ungültige E-Mail-Adresse.",
 	AccountEmailTaken:                "Diese E-Mail-Adresse gehört bereits zu einem anderen Konto.",
 	AccountOwnAdminRights:            "Sie können sich nicht selbst die Administratorrechte entziehen.",

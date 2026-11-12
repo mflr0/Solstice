@@ -31,6 +31,7 @@ var fr = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountNotFound:                  "Utilisateur introuvable.",
 	AccountUsernameInvalid:           "Identifiant invalide : lettres minuscules, chiffres, . _ @ -",
 	AccountUsernameTaken:             "Cet identifiant existe déjà.",
+	AccountUsernameFromDirectory:     "L'identifiant de ce compte vient de son annuaire et ne peut pas être modifié ici.",
 	AccountEmailInvalid:              "Adresse e-mail invalide.",
 	AccountEmailTaken:                "Cette adresse e-mail est déjà celle d'un autre compte.",
 	AccountOwnAdminRights:            "Vous ne pouvez pas retirer vos propres droits d'administration.",

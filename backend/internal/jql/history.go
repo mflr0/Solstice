@@ -115,9 +115,11 @@ func (c *compiler) histValues(h histField, vals []Value) (logged, ids frag, empt
 		if err != nil || ids.sql == "" {
 			return frag{}, frag{}, empty, err
 		}
-		// The log keeps Jira user keys, or user names for changes made in Solstice.
+		// The log keeps Jira user keys, or user names for changes made in
+		// Solstice, under the name the account had then.
 		logged, err = c.literals(join("SELECT COALESCE(user_key, username) FROM users WHERE id IN (", ids,
-			") UNION SELECT username FROM users WHERE id IN (", ids, ")"))
+			") UNION SELECT username FROM users WHERE id IN (", ids,
+			") UNION SELECT name FROM user_aliases WHERE user_id IN (", ids, ")"))
 		return logged, ids, empty, err
 	}
 	if h.name == "resolution" {

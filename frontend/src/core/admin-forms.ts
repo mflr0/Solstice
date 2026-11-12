@@ -395,12 +395,16 @@ export function userProblems(
   f: UserForm,
   isNew: boolean,
   minPassword: number,
+  /** An existing account's user name: the new one is checked once it differs. */
+  current?: string,
 ): Problems<'username' | 'email' | 'password', UserProblem> {
   const out: Problems<'username' | 'email' | 'password', UserProblem> = {};
-  if (isNew) {
-    const u = f.username.trim().toLowerCase();
+  const u = f.username.trim().toLowerCase();
+  if (isNew || (current !== undefined && u !== current)) {
     if (!u) out.username = 'usernameRequired';
     else if (!USERNAME_PATTERN.test(u)) out.username = 'usernameInvalid';
+  }
+  if (isNew) {
     if (f.invite) {
       if (!f.email.trim()) out.email = 'emailRequired';
     } else if (passwordTooShort(f.password, minPassword)) {

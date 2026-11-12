@@ -135,6 +135,13 @@ func TestUserCommand(t *testing.T) {
 	if _, err := run("add", "-username", "BOB", "-password", "other-password-1"); err == nil {
 		t.Error("a second bob was created")
 	}
+	// Nor a name an account had before a rename.
+	if _, err := conn.Exec(`INSERT INTO user_aliases (name, user_id) SELECT 'robert', id FROM users WHERE username = 'bob'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := run("add", "-username", "robert", "-password", "other-password-1"); err == nil {
+		t.Error("an account took bob's former name")
+	}
 
 	out = mustRun("passwd", "-username", "bob", "-password", "bob-password-2")
 	if out != "Password for \"bob\" changed.\n" {

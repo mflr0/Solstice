@@ -421,6 +421,11 @@ func runUser(ctx context.Context, args []string) error {
 	}
 	switch action {
 	case "add":
+		if taken, err := api.UsernameTaken(ctx, conn, login); err != nil {
+			return err
+		} else if taken {
+			return fmt.Errorf("an account named %q already exists, or had that name before", login)
+		}
 		hash, err := auth.HashPassword(acc.password)
 		if err != nil {
 			return err

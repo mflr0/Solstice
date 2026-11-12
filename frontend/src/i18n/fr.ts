@@ -2568,6 +2568,9 @@ export const fr: Messages = {
     name: 'Nom affiché',
     username: 'Identifiant',
     usernameHint: 'Pour se connecter : minuscules, chiffres, . _ @ -',
+    usernameFromDirectory: 'Vient de l’annuaire : il ne se modifie pas ici.',
+    usernameRename:
+      'Minuscules, chiffres, . _ @ -. Les mentions et filtres qui utilisent l’ancien identifiant trouvent toujours ce compte.',
     email: 'Adresse e-mail',
     password: 'Mot de passe',
     passwordHint: (n: number) => `${n} caractères au moins.`,

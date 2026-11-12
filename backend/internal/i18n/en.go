@@ -29,6 +29,7 @@ var en = map[Key]string{ // #nosec G101 -- translation catalogue, not credential
 	AccountNotFound:                  "User not found.",
 	AccountUsernameInvalid:           "Invalid username: use lowercase letters, digits and . _ @ -",
 	AccountUsernameTaken:             "This username is already taken.",
+	AccountUsernameFromDirectory:     "This account's username comes from its directory and can't be changed here.",
 	AccountEmailInvalid:              "Invalid email address.",
 	AccountEmailTaken:                "This email address is already used by another account.",
 	AccountOwnAdminRights:            "You cannot remove your own administrator rights.",
