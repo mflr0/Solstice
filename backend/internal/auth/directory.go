@@ -74,13 +74,25 @@ func saveEntry(ctx context.Context, tx *sql.Tx, id int64, source, username strin
 	if e.Admin != nil {
 		admin.Bool = *e.Admin
 	}
+	// An address another account has is left out: signing in matters more.
+	email := strings.TrimSpace(e.Email)
+	if email != "" {
+		var taken bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE email_key = LOWER(?) AND id <> ?)`,
+			email, id).Scan(&taken); err != nil {
+			return 0, err
+		}
+		if taken {
+			email = ""
+		}
+	}
 	if id == 0 {
 		name := strings.TrimSpace(e.Name)
 		if name == "" {
 			name = username
 		}
 		res, err := tx.ExecContext(ctx, `INSERT INTO users (username, display_name, email, directory, is_admin)
-			VALUES (?, ?, ?, ?, ?)`, username, name, strings.TrimSpace(e.Email), source, admin.Bool)
+			VALUES (?, ?, ?, ?, ?)`, username, name, email, source, admin.Bool)
 		if err != nil {
 			return 0, err
 		}
@@ -91,7 +103,7 @@ func saveEntry(ctx context.Context, tx *sql.Tx, id int64, source, username strin
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET directory = IF(directory = '', ?, directory),
 			display_name = COALESCE(NULLIF(?, ''), display_name), email = COALESCE(NULLIF(?, ''), email),
 			is_admin = COALESCE(?, is_admin) WHERE id = ?`,
-			source, strings.TrimSpace(e.Name), strings.TrimSpace(e.Email), admin, id); err != nil {
+			source, strings.TrimSpace(e.Name), email, admin, id); err != nil {
 			return 0, err
 		}
 		// An imported account may have been sent an invitation: its link

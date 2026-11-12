@@ -42,6 +42,9 @@ var userRows = []struct{ table, column string }{
 	{"user_preferences", "user_id"},
 }
 
+// generatedColumns are computed by the database: restore never writes them.
+var generatedColumns = []string{"email_key"}
+
 // savedRows are rows of a table, all columns, with the user name of their
 // user column.
 type savedRows struct {
@@ -100,7 +103,7 @@ func (r *run) restore(s *savedRows, skip ...string) (int, error) {
 	var cols []string
 	var idx []int
 	for i, c := range s.columns {
-		if !slices.Contains(skip, c) {
+		if !slices.Contains(skip, c) && !slices.Contains(generatedColumns, c) {
 			cols = append(cols, "`"+c+"`")
 			idx = append(idx, i)
 		}
@@ -211,10 +214,48 @@ func (r *run) keep() (*kept, error) {
 	return k, nil
 }
 
+// freeEmails empties, in saved accounts about to be restored, the address
+// that an imported account of another user name now has, which the report
+// notes: the restore would otherwise drop the account.
+func (r *run) freeEmails(saved ...*savedRows) error {
+	for _, s := range saved {
+		if s == nil {
+			continue
+		}
+		col := slices.Index(s.columns, "email")
+		for i, row := range s.rows {
+			var email string
+			switch v := row[col].(type) {
+			case []byte:
+				email = string(v)
+			case string:
+				email = v
+			}
+			if email == "" {
+				continue
+			}
+			// An account whose user name Jira has is not restored at all.
+			var taken bool
+			if err := r.conn.QueryRowContext(r.ctx, `SELECT EXISTS (SELECT 1 FROM users WHERE email_key = LOWER(?))
+				AND NOT EXISTS (SELECT 1 FROM users WHERE username = ?)`, email, s.users[i]).Scan(&taken); err != nil {
+				return err
+			}
+			if taken {
+				r.rep.warn(i18n.M(i18n.ImportWarnEmailTaken, email, s.users[i]))
+				row[col] = ""
+			}
+		}
+	}
+	return nil
+}
+
 // putBack restores what keep saved, once the import has run (or failed:
 // the operator must still be able to sign in and try again).
 func (r *run) putBack(k *kept) error {
 	var errs []error
+	if err := r.freeEmails(k.local, k.operator); err != nil {
+		errs = append(errs, err)
+	}
 	// Accounts created in Solstice whose name Jira does not use. Project ids
 	// change with the import: a chosen project scope would name another one.
 	if n, err := r.restore(k.local, "id", "scope_project_id"); err != nil {

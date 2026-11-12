@@ -167,6 +167,9 @@ func StoredPasswordMin(ctx context.Context, db *sql.DB) int { return storedPassw
 // IsDuplicate tells a unique key violation.
 func IsDuplicate(err error) bool { return isDuplicate(err) }
 
+// IsDuplicateEmail tells a violation of the unique key on accounts' addresses.
+func IsDuplicateEmail(err error) bool { return isDuplicateEmail(err) }
+
 func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	if err := requireAdmin(r); err != nil {
 		return err
@@ -230,6 +233,9 @@ func (s *Server) adminCreateUser(w http.ResponseWriter, r *http.Request) error {
 	res, err := tx.ExecContext(ctx, `INSERT INTO users (username, display_name, email, password_hash, is_admin)
 		VALUES (?, ?, ?, ?, ?)`, in.Username, strings.TrimSpace(in.Name), strings.TrimSpace(in.Email), hash, in.Admin)
 	if err != nil {
+		if isDuplicateEmail(err) {
+			return fail(http.StatusConflict, i18n.AccountEmailTaken)
+		}
 		if isDuplicate(err) {
 			return fail(http.StatusConflict, i18n.AccountUsernameTaken)
 		}
@@ -338,6 +344,9 @@ func (s *Server) adminUpdateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	if in.Email != nil {
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET email = ? WHERE id = ?`, strings.TrimSpace(*in.Email), id); err != nil {
+			if isDuplicateEmail(err) {
+				return fail(http.StatusConflict, i18n.AccountEmailTaken)
+			}
 			return err
 		}
 		// Links mailed to the old address must not work once it is not theirs.
@@ -499,6 +508,13 @@ func (s *Server) adminUserGroups(w http.ResponseWriter, r *http.Request) error {
 func isDuplicate(err error) bool {
 	var me *mysql.MySQLError
 	return errors.As(err, &me) && me.Number == 1062
+}
+
+// isDuplicateEmail tells a violation of uq_users_email_key: another account
+// has the address.
+func isDuplicateEmail(err error) bool {
+	var me *mysql.MySQLError
+	return errors.As(err, &me) && me.Number == 1062 && strings.Contains(me.Message, "uq_users_email_key'")
 }
 
 // nameTaken refuses with 409 and key when a row of table other than except
